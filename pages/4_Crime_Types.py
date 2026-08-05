@@ -1,8 +1,8 @@
-"""Offence Analysis: category patterns, weapons, motives and trends."""
+"""Crime Types: offence categories, weapons and motives."""
 
 import streamlit as st
 
-st.set_page_config(page_title="Offence Analysis · Kenya CrimeLens", page_icon="📂", layout="wide")
+st.set_page_config(page_title="Crime Types · Kenya CrimeLens", page_icon="📂", layout="wide")
 
 from utils.loader import load_data
 from utils.theme import apply_theme, page_header, kpi_cards, chart_card, info_banner
@@ -13,7 +13,7 @@ apply_theme()
 df = load_data()
 render_sidebar(df)
 
-page_header("📂", "Offence Analysis",
+page_header("📂", "Crime Types",
             "What crimes dominate, what weapons are used, and what motives are recorded")
 
 res = get_filtered(df)
@@ -24,7 +24,6 @@ if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-# KPIs
 top_cat = res["Offence Category"].value_counts().head(1)
 top_weapon = res[res["Weapon"] != "Unknown"]["Weapon"].value_counts().head(1)
 top_motive = res[res["Motive"] != "Unknown"]["Motive"].value_counts().head(1)
@@ -32,13 +31,13 @@ top_motive = res[res["Motive"] != "Unknown"]["Motive"].value_counts().head(1)
 kpi_cards([
     {"icon": "📂", "label": "Dominant category",
      "value": top_cat.index[0] if len(top_cat) else "—",
-     "sub": f"{top_cat.iloc[0]} incidents" if len(top_cat) else ""},
-    {"icon": "🗡️", "label": "Top weapon",
+     "sub": f"{top_cat.iloc[0]} incidents"},
+    {"icon": "🗡️", "label": "Most mentioned weapon",
      "value": top_weapon.index[0] if len(top_weapon) else "—",
-     "sub": f"{top_weapon.iloc[0]} incidents" if len(top_weapon) else ""},
-    {"icon": "🧠", "label": "Top motive",
+     "sub": f"{top_weapon.iloc[0]} incidents"},
+    {"icon": "🧠", "label": "Leading motive",
      "value": top_motive.index[0] if len(top_motive) else "—",
-     "sub": f"{top_motive.iloc[0]} incidents" if len(top_motive) else ""},
+     "sub": f"{top_motive.iloc[0]} incidents"},
     {"icon": "📈", "label": "Total incidents", "value": f"{len(res):,}",
      "sub": "in current query"},
 ])
@@ -47,21 +46,18 @@ c1, c2 = st.columns(2)
 with c1:
     chart_card("Incidents by offence category", charts.category_bar(res), height=450)
 with c2:
-    # Weapon distribution (excluding Unknown)
     weapon_counts = res[res["Weapon"] != "Unknown"]["Weapon"].value_counts().head(15)
-    chart_card("Top 15 weapons", charts.generic_barh(weapon_counts, color="#ea580c", unit="incidents"),
-               height=450)
+    chart_card("Top 15 weapons mentioned",
+               charts.generic_barh(weapon_counts, color="#ea580c", unit="incidents"), height=450)
 
 c3, c4 = st.columns(2)
 with c3:
     motive_counts = res[res["Motive"] != "Unknown"]["Motive"].value_counts().head(15)
-    chart_card("Top 15 motives", charts.generic_barh(motive_counts, color="#2563eb", unit="incidents"),
-               height=450)
+    chart_card("Top 15 motives recorded",
+               charts.generic_barh(motive_counts, color="#2563eb", unit="incidents"), height=450)
 with c4:
-    chart_card("Monthly incident trend with 3‑month average",
-               charts.monthly_trend_with_ma(res, value="incidents", window=3),
-               height=450)
+    chart_card("Monthly incident trend (offence categories)",
+               charts.monthly_trend_with_ma(res, value="incidents", window=3), height=450)
 
-# Offence category composition (treemap for all categories)
-chart_card("Offence category composition",
-           charts.treemap(res, ["Offence Category"]), height=450)
+# Offence category composition treemap (retained, but could be replaced)
+chart_card("Offence category composition", charts.treemap(res, ["Offence Category"]), height=450)
