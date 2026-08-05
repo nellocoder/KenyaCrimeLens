@@ -7,10 +7,17 @@ Injects the global CSS theme and provides shared UI components
 import streamlit as st
 
 # Brand colors
-SIDEBAR_BG = "#009639"    # slate-900
+SIDEBAR_BG = "#009639"      # Kenyan flag green (Pantone 355 C)
 ACCENT = "#0284c7"          # sky-600
 ACCENT_LIGHT = "#0ea5e9"    # sky-500
 PAGE_BG = "#f8fafc"         # slate-50
+
+# Derived sidebar elements
+SIDEBAR_HOVER = "rgba(255, 255, 255, 0.08)"
+SIDEBAR_ACTIVE_BG = "rgba(255, 255, 255, 0.12)"
+SIDEBAR_ACTIVE_BORDER = "#66bb6a"   # soft green highlight
+SIDEBAR_INPUT_BG = "#005a27"        # deep green for dropdowns / inputs
+SIDEBAR_INPUT_BORDER = "#007b33"    # slightly lighter green border
 
 CUSTOM_CSS = f"""
 <style>
@@ -31,7 +38,7 @@ html, body, [class*="css"] {{
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {{
     background-color: {SIDEBAR_BG};
-    border-right: 1px solid #1e293b;
+    border-right: 1px solid rgba(0, 0, 0, 0.15);
 }}
 
 /* Hide the default page menu - replaced by branded nav in filters.py */
@@ -51,16 +58,17 @@ section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {{
     transition: background-color 0.15s ease;
 }}
 section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]:hover {{
-    background-color: #1e293b;
+    background-color: {SIDEBAR_HOVER};
 }}
 section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] p {{
     font-size: 0.92rem !important;
     font-weight: 500 !important;
 }}
+/* Active page */
 section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][disabled],
 section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][aria-disabled="true"] {{
-    background-color: rgba(2, 132, 199, 0.22);
-    border-left: 3px solid {ACCENT_LIGHT};
+    background-color: {SIDEBAR_ACTIVE_BG};
+    border-left: 3px solid {SIDEBAR_ACTIVE_BORDER};
 }}
 section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][disabled] p,
 section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][aria-disabled="true"] p {{
@@ -74,9 +82,11 @@ section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][aria-disabl
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.6);
     margin: 10px 0 2px 2px;
 }}
+
+/* General sidebar typography */
 section[data-testid="stSidebar"] .stMarkdown,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] span,
@@ -87,12 +97,12 @@ section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] small {{
     color: #e2e8f0 !important;
 }}
-section[data-testid="stSidebar"] hr {{ border-color: #334155; }}
+section[data-testid="stSidebar"] hr {{ border-color: rgba(255, 255, 255, 0.15); }}
 
-/* Sidebar inputs */
+/* Sidebar inputs (select, multiselect) */
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
-    background-color: #1e293b;
-    border-color: #334155;
+    background-color: {SIDEBAR_INPUT_BG};
+    border-color: {SIDEBAR_INPUT_BORDER};
     color: #f1f5f9;
 }}
 section[data-testid="stSidebar"] div[data-baseweb="select"] span {{
@@ -104,7 +114,7 @@ section[data-testid="stSidebar"] div[data-testid="stMultiSelect"] span[data-base
 
 /* Sidebar caption text */
 section[data-testid="stSidebar"] .stCaption, section[data-testid="stSidebar"] small {{
-    color: #94a3b8 !important;
+    color: rgba(255, 255, 255, 0.65) !important;
 }}
 
 /* Buttons */
@@ -121,12 +131,12 @@ section[data-testid="stSidebar"] button[kind="primary"]:hover {{
 }}
 section[data-testid="stSidebar"] button[kind="secondary"] {{
     background-color: transparent;
-    border: 1px solid #475569;
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: #cbd5e1;
 }}
 section[data-testid="stSidebar"] button[kind="secondary"]:hover {{
-    background-color: #1e293b;
-    border-color: #64748b;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.5);
 }}
 
 /* ---------- Page headers ---------- */
