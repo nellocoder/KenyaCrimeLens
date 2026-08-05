@@ -7,7 +7,6 @@ st.set_page_config(page_title="County Analysis · Kenya CrimeLens", page_icon="�
 from utils.loader import load_data
 from utils.theme import apply_theme, page_header, kpi_cards, chart_card, info_banner
 from utils.filters import render_sidebar, get_filtered
-from utils.analytics import top_n
 from utils import charts
 
 apply_theme()
@@ -27,6 +26,7 @@ if res.empty:
 
 known = res[res["County"] != "Unknown"]
 top = known["County"].value_counts().head(1)
+
 kpi_cards([
     {"icon": "🗺️", "label": "Counties affected", "value": f"{known['County'].nunique()}",
      "sub": f"{len(res) - len(known)} records with unknown county"},
@@ -52,7 +52,7 @@ chart_card("Top 10 counties – offence category mix",
            charts.county_category_composition(res, n_counties=10, use_percent=True),
            height=520)
 
-# ----- NEW: Victim‑per‑incident ratio charts -----
+# Victim‑per‑incident ratio charts
 c3, c4 = st.columns(2)
 with c3:
     chart_card("Avg victims per incident – by county",
@@ -63,7 +63,7 @@ with c4:
                charts.avg_victims_per_incident(res, group_col="Offence Category", top_n=10),
                height=400)
 
-# ----- County scoreboard with baseline percentages -----
+# County scoreboard with baseline percentages
 st.subheader("County scoreboard")
 
 total_incidents = len(known)
@@ -76,7 +76,6 @@ tbl = (known.groupby("County")
             **{"Top Category": ("Offence Category", lambda s: s.value_counts().index[0])})
        .reset_index())
 
-# Baseline comparison percentages
 tbl["% of national incidents"] = (tbl["Incidents"] / total_incidents * 100).round(1)
 tbl["% of national victims"]   = (tbl["Victims"] / total_victims * 100).round(1)
 
