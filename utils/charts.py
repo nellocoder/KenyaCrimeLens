@@ -54,6 +54,36 @@ def monthly_trend(df: pd.DataFrame, value: str = "incidents"):
     return _style(fig)
 
 
+def monthly_trend_with_ma(df: pd.DataFrame, value: str = "incidents", window: int = 3):
+    """
+    Area chart of incidents (or victims) per month with a moving-average overlay.
+    The moving average helps detect rising/falling trends.
+    """
+    if value == "victims":
+        g = df.groupby("Month")["Victim Tally"].sum().reset_index(name="Value")
+    else:
+        g = df.groupby("Month").size().reset_index(name="Value")
+
+    g["MA"] = g["Value"].rolling(window=window, min_periods=1).mean()
+
+    fig = px.area(g, x="Month", y="Value")
+    fig.update_traces(line_color=ACCENT_LIGHT, fillcolor="rgba(14,165,233,0.18)",
+                      line_width=2.5, hovertemplate="%{x}<br>%{y:,}<extra></extra>",
+                      name="Monthly")
+
+    # Add moving average line
+    fig.add_scatter(x=g["Month"], y=g["MA"], mode="lines",
+                    line=dict(color="#0f172a", width=2, dash="dot"),
+                    name=f"{window}‑month avg",
+                    hovertemplate="%{x}<br>Avg: %{y:.1f}<extra></extra>")
+
+    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                                  xanchor="right", x=1, font=dict(size=10)))
+    fig.update_yaxes(title_text="")
+    fig.update_xaxes(title_text="")
+    return _style(fig)
+
+
 def category_bar(df: pd.DataFrame):
     """Horizontal bar of incidents by offence category, each in its own color."""
     counts = df["Offence Category"].value_counts().sort_values()
@@ -173,7 +203,6 @@ def county_map(df: pd.DataFrame, metric: str = "incidents"):
     - size & colour by 'incidents' or 'victims'
     - hover shows both numbers
     """
-    # Aggregate
     g = (df[df["County"].isin(COUNTY_COORDS)]
          .groupby("County")
          .agg(incidents=("County", "size"),
@@ -268,10 +297,8 @@ def county_category_composition(df: pd.DataFrame, n_counties: int = 10, use_perc
         color_discrete_map=category_colors(pivot.columns),
     )
 
-    # Apply base style first
     fig.update_layout(**_BASE_LAYOUT)
 
-    # Legend inside the plot, top‑right – no overlap
     fig.update_layout(
         barmode="stack",
         showlegend=True,
@@ -280,14 +307,40 @@ def county_category_composition(df: pd.DataFrame, n_counties: int = 10, use_perc
             title_text="",
             orientation="h",
             yanchor="bottom",
-            y=1.02,          # just above the chart area
+            y=1.02,
             xanchor="right",
             x=1,
         ),
-        margin=dict(l=8, r=8, t=35, b=8),   # extra top room for the horizontal legend
+        margin=dict(l=8, r=8, t=35, b=8),
     )
     fig.update_yaxes(categoryorder="total ascending")
     fig.update_xaxes(title_text="")
     fig.update_traces(hovertemplate="%{y}<br>%{x}: %{value:.1f}%<extra></extra>" if use_percent
                       else "%{y}<br>%{x}: %{value} incidents<extra></extra>")
     return fig
+
+
+# ---------------------------------------------------------------------------
+# NEW: Victim‑per‑incident ratio (deadliness indicator)
+# ---------------------------------------------------------------------------
+def avg_victims_per_incident(df: pd.DataFrame, group_col: str = "County", top_n: int = 10):
+    """
+    Horizontal bar of average victims per incident for the top‑N groups.
+    Filters out groups with fewer than 5 incidents for statistical reliability.
+    """
+    agg = df.groupby(group_col).agg(
+        incidents=("County", "size"),
+        victims=("Victim Tally", "sum")
+    ).reset_index()
+    agg = agg[agg["incidents"] >= 5]   # avoid tiny denominators
+    agg["avg_victims"] = agg["victims"] / agg["incidents"]
+
+    top = agg.sort_values("avg_victims", ascending=False).head(top_n)
+    top = top.sort_values("avg_victims")  # smallest first for horizontal bar
+
+    fig = px.bar(top, x="avg_victims", y=group_col, orientation="h",
+                 labels={"avg_victims": "Avg victims per incident", group_col: ""},
+                 color_discrete_sequence=["#b91c1c"])
+    fig.update_traces(hovertemplate="%{y}<br>%{x:.1f} victims per incident<extra></extra>")
+    fig.update_xaxes(title_text="")
+    return _style(fig, y_grid=False)
