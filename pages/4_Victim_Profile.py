@@ -51,7 +51,11 @@ with c2:
                height=400)
 
 chart_card("Victim toll by offence category", charts.victims_by_category(res), height=480)
-chart_card("Monthly victim toll", charts.monthly_trend(res, value="victims"), height=300)
+
+# -- Replaced monthly_trend with trend + moving average --
+chart_card("Monthly victim toll with 3‑month moving average",
+           charts.monthly_trend_with_ma(res, value="victims", window=3),
+           height=320)
 
 st.subheader("Incidents with the highest victim counts")
 cols = ["Date", "County", "Offence Category", "Offence", "Victim Tally", "Motive", "Case Summary"]
