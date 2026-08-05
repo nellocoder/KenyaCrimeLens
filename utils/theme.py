@@ -7,7 +7,7 @@ Injects the global CSS theme and provides shared UI components
 import streamlit as st
 
 # Brand colors
-SIDEBAR_BG = "#0f172a"      # slate-900
+SIDEBAR_BG = "#0b2e1f"    # slate-900
 ACCENT = "#0284c7"          # sky-600
 ACCENT_LIGHT = "#0ea5e9"    # sky-500
 PAGE_BG = "#f8fafc"         # slate-50
