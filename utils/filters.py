@@ -28,7 +28,7 @@ def render_sidebar(df: pd.DataFrame):
                         Kenya CrimeLens
                     </div>
                     <div style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">
-                        Media-mined crime data analysis · 2025–2026
+                        Media-mined crime intelligence · 2025–2026
                     </div>
                 </div>
             </div>
@@ -36,46 +36,73 @@ def render_sidebar(df: pd.DataFrame):
             unsafe_allow_html=True,
         )
 
-        # ---- Branded navigation (native menu is hidden in theme CSS) ----
-        st.markdown('<div class="cl-side-label">Menu</div>', unsafe_allow_html=True)
-        st.page_link("Home.py", label="Home", icon="🏠")
-        st.page_link("pages/1_Dashboard.py", label="Dashboard", icon="📊")
-        st.page_link("pages/2_County_Analysis.py", label="County Analysis", icon="📍")
-        st.page_link("pages/3_Offence_Analysis.py", label="Offence Analysis", icon="📂")
-        st.page_link("pages/4_Victim_Profile.py", label="Victim Profile", icon="👥")
-        st.page_link("pages/5_Perpetrator_Profile.py", label="Perpetrator Profile", icon="🕵️")
-        st.page_link("pages/6_Spatial_Analysis.py", label="Spatial Analysis", icon="🗺️")
+        # ---- Branded navigation ----
+        st.markdown('<div class="cl-side-label">ANALYSIS MODULES</div>', unsafe_allow_html=True)
+        st.page_link("app.py", label="National Overview", icon="🏠")
+        st.page_link("pages/1_Executive_Overview.py", label="Executive Overview", icon="📊")
+        st.page_link("pages/2_Trends.py", label="Crime Trends", icon="📈")
+        st.page_link("pages/3_Geography.py", label="Geography & Maps", icon="🗺️")
+        st.page_link("pages/4_Crime_Types.py", label="Crime Types", icon="📂")
+        st.page_link("pages/5_Victims.py", label="Victims", icon="👥")
+        st.page_link("pages/6_Suspects.py", label="Suspects", icon="🕵️")
         st.page_link("pages/7_Data_Explorer.py", label="Data Explorer", icon="🗃️")
+        st.page_link("pages/8_Methodology.py", label="Methodology", icon="📖")
 
         st.divider()
 
-        # ---- Query panel ----
-        st.markdown('<div class="cl-side-label">Query</div>', unsafe_allow_html=True)
+        # ---- Filters ----
+        st.markdown('<div class="cl-side-label">FILTERS</div>', unsafe_allow_html=True)
 
-        years_all = sorted(df["Year"].unique())
-        years = st.multiselect("Year", years_all, default=years_all, key="f_years")
-        county = st.selectbox("County", [ALL] + sorted(df["County"].unique()), key="f_county")
-        category = st.selectbox("Offence Category",
-                                [ALL] + sorted(df["Offence Category"].unique()), key="f_category")
-        gender = st.selectbox("Victim Gender",
-                              [ALL] + sorted(df["Victim Gender"].unique()), key="f_gender")
-        weapon = st.selectbox("Weapon", [ALL] + sorted(df["Weapon"].unique()), key="f_weapon")
-        motive = st.selectbox("Motive", [ALL] + sorted(df["Motive"].unique()), key="f_motive")
+        with st.expander("⏱️ Time", expanded=True):
+            years_all = sorted(df["Year"].unique())
+            years = st.multiselect("Year", years_all, default=years_all, key="f_years")
+
+        with st.expander("📍 Geography", expanded=True):
+            county = st.selectbox("County", [ALL] + sorted(df["County"].unique()), key="f_county")
+
+        with st.expander("📂 Crime", expanded=True):
+            category = st.selectbox("Offence Category",
+                                    [ALL] + sorted(df["Offence Category"].unique()), key="f_category")
+
+        with st.expander("👥 Victim / Suspect", expanded=False):
+            gender = st.selectbox("Victim Gender",
+                                  [ALL] + sorted(df["Victim Gender"].unique()), key="f_gender")
+
+        with st.expander("🔪 Context", expanded=False):
+            weapon = st.selectbox("Weapon", [ALL] + sorted(df["Weapon"].unique()), key="f_weapon")
+            motive = st.selectbox("Motive", [ALL] + sorted(df["Motive"].unique()), key="f_motive")
 
         c1, c2 = st.columns(2)
-        analyze = c1.button("🔍 Analyze", type="primary", use_container_width=True)
-        reset = c2.button("↺ Reset", use_container_width=True)
+        analyze = c1.button("🔍 Apply Filters", type="primary", use_container_width=True)
+        reset = c2.button("↺ Reset All", use_container_width=True)
+
+        if st.session_state.get("applied"):
+            active = st.session_state["applied"]
+            st.markdown("**Active filters:**")
+            active_str = []
+            if active["years"] != years_all:
+                active_str.append(f"Years: {active['years']}")
+            if active["county"] != ALL:
+                active_str.append(f"County: {active['county']}")
+            if active["category"] != ALL:
+                active_str.append(f"Category: {active['category']}")
+            if active["gender"] != ALL:
+                active_str.append(f"Victim gender: {active['gender']}")
+            if active["weapon"] != ALL:
+                active_str.append(f"Weapon: {active['weapon']}")
+            if active["motive"] != ALL:
+                active_str.append(f"Motive: {active['motive']}")
+            if active_str:
+                st.caption(" · ".join(active_str))
+            else:
+                st.caption("Showing all data (no filter applied)")
 
         st.divider()
-        st.markdown('<div class="cl-side-label">Dataset</div>', unsafe_allow_html=True)
+        st.markdown('<div class="cl-side-label">DATASET</div>', unsafe_allow_html=True)
         st.caption(
-            f"{len(df):,} incidents mined from Kenyan print media  \n"
+            f"{len(df):,} media‑reported incidents  \n"
             f"{df['Date'].min():%Y-%m-%d} to {df['Date'].max():%Y-%m-%d}  \n"
-            "Sources: Daily Nation, The Standard, The Star, People Daily and others"
-        )
-        st.caption(
-            "Note: figures reflect media-reported incidents, not official police "
-            "statistics. A missing victim count is treated as 1."
+            "Sources: Daily Nation, Standard, Star, People Daily, others"
         )
 
     if reset:
