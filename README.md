@@ -52,26 +52,26 @@ Click **Apply Filters** to update all pages. Active filters are displayed in the
 
 ## Project structure
 KenyaCrimeLens/
-├── app.py # Entry point (National Overview, unfiltered)
+├── app.py                             # Entry point (National Overview, unfiltered)
 ├── pages/
-│ ├── 1_Executive_Overview.py
-│ ├── 2_Trends.py
-│ ├── 3_Geography.py
-│ ├── 4_Crime_Types.py
-│ ├── 5_Victims.py
-│ ├── 6_Suspects.py
-│ ├── 7_Data_Explorer.py
-│ └── 8_Methodology.py
+│   ├── 1_Executive_Overview.py
+│   ├── 2_Trends.py
+│   ├── 3_Geography.py
+│   ├── 4_Crime_Types.py
+│   ├── 5_Victims.py
+│   ├── 6_Suspects.py
+│   ├── 7_Data_Explorer.py
+│   └── 8_Methodology.py
 ├── utils/
-│ ├── theme.py # Global CSS & shared UI components
-│ ├── filters.py # Sidebar query panel & filter state
-│ ├── loader.py # Cached data loading (no victim imputation)
-│ ├── analytics.py # KPIs, narrative generation, crime rates
-│ ├── charts.py # Plotly chart factory, county map, heatmap
-│ └── population.py # Kenya county population (2019 census)
+│   ├── theme.py                       # Global CSS & shared UI components
+│   ├── filters.py                     # Sidebar query panel & filter state
+│   ├── loader.py                      # Cached data loading (no victim imputation)
+│   ├── analytics.py                   # KPIs, narrative generation, crime rates
+│   ├── charts.py                      # Plotly chart factory, county map, heatmap
+│   └── population.py                  # Kenya county population (2019 census)
 ├── data/
-│ └── cleaned_crime_data.csv # Cleaned & categorized dataset
-├── data_cleaning.py # Raw Excel → cleaned CSV pipeline
-├── CUMULATIVE MEDIA MINING DATA 2025-2026 (1).xlsx # Raw source
+│   └── cleaned_crime_data.csv         # Cleaned & categorized dataset
+├── data_cleaning.py                   # Raw Excel → cleaned CSV pipeline
+├── CUMULATIVE MEDIA MINING DATA 2025-2026 (1).xlsx   # Raw source
 ├── requirements.txt
 └── README.md
