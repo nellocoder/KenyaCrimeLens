@@ -62,6 +62,12 @@ gp = (res.groupby("Offence Category")["Perpetrator Tally"].sum()
 chart_card("Recorded perpetrators by offence category",
            charts.generic_barh(gp, color="#dc2626", unit="perpetrators"), height=480)
 
+# -- Added monthly trend of perpetrator counts --
+if len(recorded) > 0:
+    chart_card("Monthly recorded perpetrator count with 3‑month average",
+               charts.monthly_trend_with_ma(recorded, value="incidents", window=3),
+               height=300)
+
 st.subheader("Incidents with the most recorded perpetrators")
 cols = ["Date", "County", "Offence Category", "Offence", "Perpetrator Tally",
         "Perpetrator Gender", "Case Summary"]
