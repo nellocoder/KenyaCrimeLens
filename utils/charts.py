@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 ACCENT = "#0284c7"
 ACCENT_LIGHT = "#0ea5e9"
 
-# Same palette order as the web app, mapped over the sorted category names
 _PALETTE = [
     "#dc2626", "#ea580c", "#d97706", "#ca8a04", "#65a30d", "#16a34a", "#0d9488",
     "#0891b2", "#2563eb", "#4f46e5", "#7c3aed", "#a21caf", "#db2777", "#e11d48",
@@ -41,7 +40,6 @@ def _style(fig, y_grid=True):
 
 
 def monthly_trend(df: pd.DataFrame, value: str = "incidents"):
-    """Area chart of incidents (or victims) per month."""
     if value == "victims":
         g = df.groupby("Month")["Victim Tally"].sum().reset_index(name="Value")
     else:
@@ -55,28 +53,19 @@ def monthly_trend(df: pd.DataFrame, value: str = "incidents"):
 
 
 def monthly_trend_with_ma(df: pd.DataFrame, value: str = "incidents", window: int = 3):
-    """
-    Area chart of incidents (or victims) per month with a moving-average overlay.
-    The moving average helps detect rising/falling trends.
-    """
     if value == "victims":
         g = df.groupby("Month")["Victim Tally"].sum().reset_index(name="Value")
     else:
         g = df.groupby("Month").size().reset_index(name="Value")
-
     g["MA"] = g["Value"].rolling(window=window, min_periods=1).mean()
-
     fig = px.area(g, x="Month", y="Value")
     fig.update_traces(line_color=ACCENT_LIGHT, fillcolor="rgba(14,165,233,0.18)",
                       line_width=2.5, hovertemplate="%{x}<br>%{y:,}<extra></extra>",
                       name="Monthly")
-
-    # Add moving average line
     fig.add_scatter(x=g["Month"], y=g["MA"], mode="lines",
                     line=dict(color="#0f172a", width=2, dash="dot"),
                     name=f"{window}‑month avg",
                     hovertemplate="%{x}<br>Avg: %{y:.1f}<extra></extra>")
-
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02,
                                   xanchor="right", x=1, font=dict(size=10)))
     fig.update_yaxes(title_text="")
@@ -85,7 +74,6 @@ def monthly_trend_with_ma(df: pd.DataFrame, value: str = "incidents", window: in
 
 
 def category_bar(df: pd.DataFrame):
-    """Horizontal bar of incidents by offence category, each in its own color."""
     counts = df["Offence Category"].value_counts().sort_values()
     colors = category_colors(counts.index)
     fig = px.bar(counts, x=counts.values, y=counts.index, orientation="h",
@@ -115,7 +103,6 @@ def donut(series_counts: pd.Series, colors=None):
 
 
 def generic_barh(counts: pd.Series, color: str = "#8b5cf6", unit: str = "cases"):
-    """Simple horizontal bar from a value_counts series (ascending)."""
     fig = px.bar(x=counts.values, y=counts.index, orientation="h",
                  labels={"x": "", "y": ""}, color_discrete_sequence=[color])
     fig.update_traces(hovertemplate=f"%{{y}}<br>%{{x:,}} {unit}<extra></extra>")
@@ -167,7 +154,7 @@ def victims_by_category(df: pd.DataFrame):
 
 
 # ---------------------------------------------------------------------------
-# Spatial: county centroids (approximate) for the map
+# Spatial
 # ---------------------------------------------------------------------------
 COUNTY_COORDS = {
     "Baringo": (0.4667, 35.9667), "Bomet": (-0.7813, 35.3416),
@@ -197,14 +184,14 @@ COUNTY_COORDS = {
 }
 
 
-def county_map(df: pd.DataFrame, metric: str = "incidents"):
+def county_map(df: pd.DataFrame, metric: str = "incidents", rate: bool = False):
     """
-    Interactive bubble map of Kenya counties.
-    - metric = "incidents": size & colour by incident count
-    - metric = "victims": size & colour by victim toll
-    - metric = "severity": size = incidents, colour = average victims per incident
-      (only counties with ≥5 incidents are shown)
+    Interactive bubble map (or choropleth placeholder) of Kenya counties.
+    metric: "incidents", "victims", or "avg_victims"
+    rate: if True, compute incidents per 100k population.
     """
+    from utils.population import COUNTY_POPULATION
+
     g = (df[df["County"].isin(COUNTY_COORDS)]
          .groupby("County")
          .agg(incidents=("County", "size"),
@@ -218,74 +205,46 @@ def county_map(df: pd.DataFrame, metric: str = "incidents"):
         fig.update_layout(title="No mappable counties in current filter")
         return fig
 
-    # Define size & colour based on metric
     if metric == "incidents":
-        size_col = "incidents"
         color_col = "incidents"
         colorbar_title = "Incidents"
+        if rate:
+            g["rate"] = g.apply(lambda row: crime_rate(row["incidents"], row["County"]), axis=1)
+            color_col = "rate"
+            colorbar_title = "Incidents per 100k"
     elif metric == "victims":
-        size_col = "victims"
         color_col = "victims"
         colorbar_title = "Victims"
-    elif metric == "severity":
-        # Average victims per incident (only counties with enough data)
-        g["severity"] = g.apply(
-            lambda row: row["victims"] / row["incidents"] if row["incidents"] >= 5 else None,
-            axis=1
-        )
-        g = g.dropna(subset=["severity"])
+    elif metric == "avg_victims":
+        g["avg_victims"] = g.apply(
+            lambda row: row["victims"] / row["incidents"] if row["incidents"] >= 5 else None, axis=1)
+        g = g.dropna(subset=["avg_victims"])
         if g.empty:
             fig = go.Figure()
-            fig.update_layout(title="Not enough data for severity calculation")
+            fig.update_layout(title="Not enough data for average victim calculation")
             return fig
-        size_col = "incidents"               # bubble size still reflects volume
-        color_col = "severity"
+        color_col = "avg_victims"
         colorbar_title = "Avg victims per incident"
-    else:
-        # fallback
-        size_col = "incidents"
-        color_col = "incidents"
-        colorbar_title = "Incidents"
 
-    hover_data = {
-        "incidents": True,
-        "victims": ":.0f",
-        "lat": False,
-        "lon": False,
-    }
-    # Add severity to hover if available
-    if metric == "severity":
-        hover_data["severity"] = ":.2f"
+    hover_data = {"incidents": True, "victims": ":.0f", "lat": False, "lon": False}
+    if metric == "avg_victims":
+        hover_data["avg_victims"] = ":.2f"
 
     try:
         fig = px.scatter_map(
-            g,
-            lat="lat",
-            lon="lon",
-            size=size_col,
-            color=color_col,
-            size_max=42,
-            color_continuous_scale="Reds",
-            hover_name="County",
-            hover_data=hover_data,
-            zoom=5.1,
-            center=dict(lat=0.3, lon=37.8),
+            g, lat="lat", lon="lon", size="incidents", color=color_col,
+            size_max=42, color_continuous_scale="Reds",
+            hover_name="County", hover_data=hover_data,
+            zoom=5.1, center=dict(lat=0.3, lon=37.8)
         )
         fig.update_layout(map_style="carto-positron")
     except Exception:
         fig = px.scatter_mapbox(
-            g,
-            lat="lat",
-            lon="lon",
-            size=size_col,
-            color=color_col,
-            size_max=42,
-            color_continuous_scale="Reds",
+            g, lat="lat", lon="lon", size="incidents", color=color_col,
+            size_max=42, color_continuous_scale="Reds",
             mapbox_style="carto-positron",
-            hover_name="County",
-            hover_data=hover_data,
-            zoom=5.1,
-            center=dict(lat=0.3, lon=37.8),
+            hover_name="County", hover_data=hover_data,
+            zoom=5.1, center=dict(lat=0.3, lon=37.8)
         )
 
     fig.update_layout(
@@ -296,48 +255,39 @@ def county_map(df: pd.DataFrame, metric: str = "incidents"):
     return fig
 
 
-def county_category_composition(df: pd.DataFrame, n_counties: int = 10, use_percent: bool = True):
-    """
-    100% stacked bar (or absolute grouped bar) of offence categories within the top counties.
-    use_percent=True normalises each county to 100% – good for comparing profiles.
-    """
-    top_counties = (df[df["County"] != "Unknown"]["County"]
-                    .value_counts().head(n_counties).index)
+def county_offence_heatmap(df: pd.DataFrame, n_counties: int = 10):
+    """Heatmap: top counties x offence categories."""
+    top_counties = df[df["County"] != "Unknown"]["County"].value_counts().head(n_counties).index
     cross = (df[df["County"].isin(top_counties)]
              .groupby(["County", "Offence Category"]).size().reset_index(name="Count"))
-
     pivot = cross.pivot(index="County", columns="Offence Category", values="Count").fillna(0)
-
-    if use_percent:
-        pivot = pivot.div(pivot.sum(axis=1), axis=0) * 100
-
     pivot = pivot[sorted(pivot.columns)]
 
-    fig = px.bar(
-        pivot,
-        x=pivot.columns,
-        y=pivot.index,
-        orientation="h",
-        labels={"x": "% of incidents" if use_percent else "Incidents", "y": ""},
-        color_discrete_map=category_colors(pivot.columns),
-    )
+    fig = px.imshow(pivot, text_auto='.0f', aspect="auto",
+                    color_continuous_scale="Blues",
+                    labels=dict(x="Offence Category", y="County", color="Incidents"))
+    fig.update_xaxes(side="top")
+    fig.update_layout(font=dict(family="Inter, Segoe UI, sans-serif", size=11),
+                      margin=dict(l=8, r=8, t=50, b=8))
+    return fig
 
+
+def county_category_composition(df, n_counties=10, use_percent=True):
+    top = df[df["County"] != "Unknown"]["County"].value_counts().head(n_counties).index
+    cross = (df[df["County"].isin(top)]
+             .groupby(["County", "Offence Category"]).size().reset_index(name="Count"))
+    pivot = cross.pivot(index="County", columns="Offence Category", values="Count").fillna(0)
+    if use_percent:
+        pivot = pivot.div(pivot.sum(axis=1), axis=0) * 100
+    pivot = pivot[sorted(pivot.columns)]
+    fig = px.bar(pivot, x=pivot.columns, y=pivot.index, orientation="h",
+                 labels={"x": "% of incidents" if use_percent else "Incidents", "y": ""},
+                 color_discrete_map=category_colors(pivot.columns))
     fig.update_layout(**_BASE_LAYOUT)
-
-    fig.update_layout(
-        barmode="stack",
-        showlegend=True,
-        legend=dict(
-            font=dict(size=10),
-            title_text="",
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-        ),
-        margin=dict(l=8, r=8, t=35, b=8),
-    )
+    fig.update_layout(barmode="stack", showlegend=True,
+                      legend=dict(font=dict(size=10), title_text="", orientation="h",
+                                  yanchor="bottom", y=1.02, xanchor="right", x=1),
+                      margin=dict(l=8, r=8, t=35, b=8))
     fig.update_yaxes(categoryorder="total ascending")
     fig.update_xaxes(title_text="")
     fig.update_traces(hovertemplate="%{y}<br>%{x}: %{value:.1f}%<extra></extra>" if use_percent
@@ -345,24 +295,13 @@ def county_category_composition(df: pd.DataFrame, n_counties: int = 10, use_perc
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Victim‑per‑incident ratio (deadliness indicator)
-# ---------------------------------------------------------------------------
-def avg_victims_per_incident(df: pd.DataFrame, group_col: str = "County", top_n: int = 10):
-    """
-    Horizontal bar of average victims per incident for the top‑N groups.
-    Filters out groups with fewer than 5 incidents for statistical reliability.
-    """
-    agg = df.groupby(group_col).agg(
-        incidents=("County", "size"),
-        victims=("Victim Tally", "sum")
-    ).reset_index()
-    agg = agg[agg["incidents"] >= 5]   # avoid tiny denominators
+def avg_victims_per_incident(df, group_col="County", top_n=10):
+    agg = df.groupby(group_col).agg(incidents=("County", "size"),
+                                    victims=("Victim Tally", "sum")).reset_index()
+    agg = agg[agg["incidents"] >= 5]
     agg["avg_victims"] = agg["victims"] / agg["incidents"]
-
     top = agg.sort_values("avg_victims", ascending=False).head(top_n)
-    top = top.sort_values("avg_victims")  # smallest first for horizontal bar
-
+    top = top.sort_values("avg_victims")
     fig = px.bar(top, x="avg_victims", y=group_col, orientation="h",
                  labels={"avg_victims": "Avg victims per incident", group_col: ""},
                  color_discrete_sequence=["#b91c1c"])
