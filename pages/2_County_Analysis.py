@@ -52,10 +52,38 @@ chart_card("Top 10 counties – offence category mix",
            charts.county_category_composition(res, n_counties=10, use_percent=True),
            height=520)
 
+# ----- NEW: Victim‑per‑incident ratio charts -----
+c3, c4 = st.columns(2)
+with c3:
+    chart_card("Avg victims per incident – by county",
+               charts.avg_victims_per_incident(res, group_col="County", top_n=10),
+               height=400)
+with c4:
+    chart_card("Avg victims per incident – by offence category",
+               charts.avg_victims_per_incident(res, group_col="Offence Category", top_n=10),
+               height=400)
+
+# ----- County scoreboard with baseline percentages -----
 st.subheader("County scoreboard")
+
+total_incidents = len(known)
+total_victims = known["Victim Tally"].sum()
+
 tbl = (known.groupby("County")
-       .agg(Incidents=("County", "size"), Victims=("Victim Tally", "sum"),
+       .agg(Incidents=("County", "size"),
+            Victims=("Victim Tally", "sum"),
             Perpetrators=("Perpetrator Tally", "sum"),
             **{"Top Category": ("Offence Category", lambda s: s.value_counts().index[0])})
-       .sort_values("Incidents", ascending=False).reset_index())
-st.dataframe(tbl, use_container_width=True, hide_index=True)
+       .reset_index())
+
+# Baseline comparison percentages
+tbl["% of national incidents"] = (tbl["Incidents"] / total_incidents * 100).round(1)
+tbl["% of national victims"]   = (tbl["Victims"] / total_victims * 100).round(1)
+
+tbl = tbl.sort_values("Incidents", ascending=False).reset_index(drop=True)
+
+st.dataframe(tbl, use_container_width=True, hide_index=True,
+             column_config={
+                 "% of national incidents": st.column_config.NumberColumn(format="%.1f%%"),
+                 "% of national victims": st.column_config.NumberColumn(format="%.1f%%"),
+             })
