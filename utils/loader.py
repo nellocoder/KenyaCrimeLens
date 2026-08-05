@@ -6,7 +6,6 @@ import streamlit as st
 
 DATA_PATH = os.path.join("data", "cleaned_crime_data.csv")
 
-
 @st.cache_data(show_spinner="Loading dataset...")
 def load_data() -> pd.DataFrame:
     """Load the cleaned, categorized media-mining dataset (cached)."""
@@ -26,7 +25,12 @@ def load_data() -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].fillna("Unknown")
 
-    df["Victim Tally"] = pd.to_numeric(df["Victim Tally"], errors="coerce").fillna(1).astype(int)
+    # Victim / Perpetrator tallies: keep NaN, do NOT fill with 1
+    df["Victim Tally"] = pd.to_numeric(df["Victim Tally"], errors="coerce")
     df["Perpetrator Tally"] = pd.to_numeric(df["Perpetrator Tally"], errors="coerce")
+
+    # Flags for known counts
+    df["Victim Known"] = df["Victim Tally"].notna()
+    df["Perpetrator Known"] = df["Perpetrator Tally"].notna()
 
     return df.sort_values("Date")
