@@ -38,7 +38,7 @@ def render_sidebar(df: pd.DataFrame):
 
         # ---- Branded navigation ----
         st.markdown('<div class="cl-side-label">ANALYSIS MODULES</div>', unsafe_allow_html=True)
-        st.page_link("app.py", label="National Overview", icon="🏠")
+        st.page_link("Home.py", label="National Overview", icon="🏠")
         st.page_link("pages/1_Executive_Overview.py", label="Executive Overview", icon="📊")
         st.page_link("pages/2_Trends.py", label="Crime Trends", icon="📈")
         st.page_link("pages/3_Geography.py", label="Geography & Maps", icon="🗺️")
