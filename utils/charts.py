@@ -200,8 +200,10 @@ COUNTY_COORDS = {
 def county_map(df: pd.DataFrame, metric: str = "incidents"):
     """
     Interactive bubble map of Kenya counties.
-    - size & colour by 'incidents' or 'victims'
-    - hover shows both numbers
+    - metric = "incidents": size & colour by incident count
+    - metric = "victims": size & colour by victim toll
+    - metric = "severity": size = incidents, colour = average victims per incident
+      (only counties with ≥5 incidents are shown)
     """
     g = (df[df["County"].isin(COUNTY_COORDS)]
          .groupby("County")
@@ -216,14 +218,34 @@ def county_map(df: pd.DataFrame, metric: str = "incidents"):
         fig.update_layout(title="No mappable counties in current filter")
         return fig
 
+    # Define size & colour based on metric
     if metric == "incidents":
         size_col = "incidents"
         color_col = "incidents"
         colorbar_title = "Incidents"
-    else:
+    elif metric == "victims":
         size_col = "victims"
         color_col = "victims"
         colorbar_title = "Victims"
+    elif metric == "severity":
+        # Average victims per incident (only counties with enough data)
+        g["severity"] = g.apply(
+            lambda row: row["victims"] / row["incidents"] if row["incidents"] >= 5 else None,
+            axis=1
+        )
+        g = g.dropna(subset=["severity"])
+        if g.empty:
+            fig = go.Figure()
+            fig.update_layout(title="Not enough data for severity calculation")
+            return fig
+        size_col = "incidents"               # bubble size still reflects volume
+        color_col = "severity"
+        colorbar_title = "Avg victims per incident"
+    else:
+        # fallback
+        size_col = "incidents"
+        color_col = "incidents"
+        colorbar_title = "Incidents"
 
     hover_data = {
         "incidents": True,
@@ -231,6 +253,9 @@ def county_map(df: pd.DataFrame, metric: str = "incidents"):
         "lat": False,
         "lon": False,
     }
+    # Add severity to hover if available
+    if metric == "severity":
+        hover_data["severity"] = ":.2f"
 
     try:
         fig = px.scatter_map(
@@ -321,7 +346,7 @@ def county_category_composition(df: pd.DataFrame, n_counties: int = 10, use_perc
 
 
 # ---------------------------------------------------------------------------
-# NEW: Victim‑per‑incident ratio (deadliness indicator)
+# Victim‑per‑incident ratio (deadliness indicator)
 # ---------------------------------------------------------------------------
 def avg_victims_per_incident(df: pd.DataFrame, group_col: str = "County", top_n: int = 10):
     """
