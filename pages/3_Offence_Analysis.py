@@ -1,21 +1,20 @@
-"""County Analysis: geographic distribution and county x category structure."""
+"""Offence Analysis: category patterns, weapons, motives and trends."""
 
 import streamlit as st
 
-st.set_page_config(page_title="County Analysis · Kenya CrimeLens", page_icon="📍", layout="wide")
+st.set_page_config(page_title="Offence Analysis · Kenya CrimeLens", page_icon="📂", layout="wide")
 
 from utils.loader import load_data
 from utils.theme import apply_theme, page_header, kpi_cards, chart_card, info_banner
 from utils.filters import render_sidebar, get_filtered
-from utils.analytics import top_n
 from utils import charts
 
 apply_theme()
 df = load_data()
 render_sidebar(df)
 
-page_header("📍", "County Analysis",
-            "Where incidents are concentrated and how offence patterns differ by county")
+page_header("📂", "Offence Analysis",
+            "What crimes dominate, what weapons are used, and what motives are recorded")
 
 res = get_filtered(df)
 if res is None:
@@ -25,37 +24,44 @@ if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-known = res[res["County"] != "Unknown"]
-top = known["County"].value_counts().head(1)
+# KPIs
+top_cat = res["Offence Category"].value_counts().head(1)
+top_weapon = res[res["Weapon"] != "Unknown"]["Weapon"].value_counts().head(1)
+top_motive = res[res["Motive"] != "Unknown"]["Motive"].value_counts().head(1)
+
 kpi_cards([
-    {"icon": "🗺️", "label": "Counties affected", "value": f"{known['County'].nunique()}",
-     "sub": f"{len(res) - len(known)} records with unknown county"},
-    {"icon": "📍", "label": "Leading county", "value": top.index[0] if len(top) else "—",
-     "sub": f"{top.iloc[0]} incidents" if len(top) else ""},
-    {"icon": "👥", "label": "Victims in leading county",
-     "value": f"{int(known[known['County'] == top.index[0]]['Victim Tally'].sum()):,}" if len(top) else "—",
-     "sub": "media-reported"},
-    {"icon": "📂", "label": "Leading category there",
-     "value": (known[known["County"] == top.index[0]]["Offence Category"].value_counts().index[0]
-               if len(top) else "—"),
-     "sub": "most frequent offence group"},
+    {"icon": "📂", "label": "Dominant category",
+     "value": top_cat.index[0] if len(top_cat) else "—",
+     "sub": f"{top_cat.iloc[0]} incidents" if len(top_cat) else ""},
+    {"icon": "🗡️", "label": "Top weapon",
+     "value": top_weapon.index[0] if len(top_weapon) else "—",
+     "sub": f"{top_weapon.iloc[0]} incidents" if len(top_weapon) else ""},
+    {"icon": "🧠", "label": "Top motive",
+     "value": top_motive.index[0] if len(top_motive) else "—",
+     "sub": f"{top_motive.iloc[0]} incidents" if len(top_motive) else ""},
+    {"icon": "📈", "label": "Total incidents", "value": f"{len(res):,}",
+     "sub": "in current query"},
 ])
 
 c1, c2 = st.columns(2)
 with c1:
-    chart_card("Top 15 counties by incidents", charts.top_counties_bar(res, n=15), height=430)
+    chart_card("Incidents by offence category", charts.category_bar(res), height=450)
 with c2:
-    chart_card("Top 10 counties by offence category",
-               charts.stacked_county_category(res, n_counties=10), height=430)
+    # Weapon distribution (excluding Unknown)
+    weapon_counts = res[res["Weapon"] != "Unknown"]["Weapon"].value_counts().head(15)
+    chart_card("Top 15 weapons", charts.generic_barh(weapon_counts, color="#ea580c", unit="incidents"),
+               height=450)
 
-chart_card("County vs offence category breakdown",
-           charts.treemap(res[res["County"] != "Unknown"], ["County", "Offence Category"]),
-           height=520)
+c3, c4 = st.columns(2)
+with c3:
+    motive_counts = res[res["Motive"] != "Unknown"]["Motive"].value_counts().head(15)
+    chart_card("Top 15 motives", charts.generic_barh(motive_counts, color="#2563eb", unit="incidents"),
+               height=450)
+with c4:
+    chart_card("Monthly incident trend with 3‑month average",
+               charts.monthly_trend_with_ma(res, value="incidents", window=3),
+               height=450)
 
-st.subheader("County scoreboard")
-tbl = (known.groupby("County")
-       .agg(Incidents=("County", "size"), Victims=("Victim Tally", "sum"),
-            Perpetrators=("Perpetrator Tally", "sum"),
-            **{"Top Category": ("Offence Category", lambda s: s.value_counts().index[0])})
-       .sort_values("Incidents", ascending=False).reset_index())
-st.dataframe(tbl, use_container_width=True, hide_index=True)
+# Offence category composition (treemap for all categories)
+chart_card("Offence category composition",
+           charts.treemap(res, ["Offence Category"]), height=450)
