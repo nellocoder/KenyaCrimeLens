@@ -65,9 +65,7 @@ with col2:
 # ---- Map ----
 with st.container():
     if map_type == "Bubbles":
-        # Map metric normalisation
         if map_metric == "severity (avg victims per incident)":
-            # Pass 'severity' to the updated county_map that handles ratio
             fig_map = charts.county_map(res, metric="severity")
         else:
             fig_map = charts.county_map(res, metric=map_metric)
@@ -88,7 +86,7 @@ with c2:
     chart_card("Top counties by victim toll",
                charts.generic_barh(victims_series, color="#0d9488", unit="victims"), height=400)
 
-# ----- NEW: Victim‑per‑incident ratio charts -----
+# ----- Victim‑per‑incident ratio charts -----
 c3, c4 = st.columns(2)
 with c3:
     chart_card("Avg victims per incident – by county (mapped)",
