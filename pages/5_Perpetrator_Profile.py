@@ -82,5 +82,6 @@ styled_table(
     strong_columns=(C.COL_OFFENCE,),
     numeric_columns=("Perpetrators",),
     muted_columns=(C.COL_PERP_GENDER, C.COL_SUMMARY),
+    truncate_columns={C.COL_SUMMARY: 90},
     date_columns=(C.COL_DATE,),
 )
