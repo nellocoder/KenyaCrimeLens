@@ -3,11 +3,19 @@
 Run:  streamlit run Home.py
 """
 
+import os
+
 import streamlit as st
 
+try:
+    from PIL import Image
+    _icon = Image.open(os.path.join("assets", "logo_ncrc.png"))
+except Exception:  # noqa: BLE001 - fall back to emoji if logo/PIL unavailable
+    _icon = "🔍"
+
 st.set_page_config(
-    page_title="Kenya CrimeLens",
-    page_icon="🔍",
+    page_title="Kenya CrimeLens · NCRC",
+    page_icon=_icon,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -15,8 +23,9 @@ st.set_page_config(
 from utils import charts
 from utils import config as C
 from utils.filters import render_sidebar
-from utils.loader import load_data
-from utils.theme import apply_theme, chart_card, kpi_cards, page_header
+from utils.loader import load_data, load_logo_b64
+from utils.theme import (apply_theme, chart_card, kpi_cards, org_banner,
+                         page_header)
 
 apply_theme()
 df = load_data()
@@ -25,6 +34,8 @@ if df.empty:
 
 render_sidebar(df)
 
+org_banner(load_logo_b64())
+
 page_header(
     "🔍", "Kenya CrimeLens",
     "Interactive analysis of media-mined crime incidents across Kenya · "
@@ -32,10 +43,10 @@ page_header(
 )
 
 st.info(
-    "👈 Use the **sidebar query panel** to filter by year, county, offence "
-    "category, victim gender, weapon or motive, then click **Analyze**. "
-    "Navigate between analytical modules using the menu. "
-    "The overview below covers the full dataset.",
+    "Every page loads with the full national overview by default. To narrow it, "
+    "use the **sidebar query panel** to filter by year, county, offence category, "
+    "victim gender, weapon or motive, then click **Analyze**. Navigate between "
+    "analytical modules using the menu.",
     icon="💡",
 )
 
