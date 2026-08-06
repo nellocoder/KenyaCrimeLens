@@ -22,14 +22,11 @@ page_header("📊", "Dashboard",
             "Executive overview of the current query with an automatic analyst briefing")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-f = active_filters() or {}
+f = active_filters(df) or {}
 filter_chips(f)
 
 cards = kpis(res)

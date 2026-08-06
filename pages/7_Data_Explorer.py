@@ -23,14 +23,11 @@ page_header("🗃️", "Data Explorer",
             "Search the incident records behind your query and export them for reporting")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
+filter_chips(active_filters(df))
 
 # ---------------------------------------------------------------------------
 # Search

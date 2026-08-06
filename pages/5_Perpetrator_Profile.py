@@ -22,14 +22,11 @@ page_header("🕵️", "Perpetrator Profile Analysis",
             "Recorded perpetrator counts, gender and the offences they are linked to")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
+filter_chips(active_filters(df))
 
 recorded = res[res[C.COL_PERPS].notna()]
 perps = int(res[C.COL_PERPS].sum(skipna=True) or 0)

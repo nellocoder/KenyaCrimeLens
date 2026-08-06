@@ -23,14 +23,11 @@ page_header("📂", "Offence Analysis",
             "What kinds of crimes dominate, and the weapons and motives behind them")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
+filter_chips(active_filters(df))
 
 top_cat = res[C.COL_CATEGORY].value_counts().head(1)
 top_off = top_n(res[C.COL_OFFENCE], 1)

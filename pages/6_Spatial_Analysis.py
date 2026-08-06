@@ -22,14 +22,11 @@ page_header("🗺️", "Spatial Analysis",
             "County-level geography of incidents: choropleth density and bubble volume")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
+filter_chips(active_filters(df))
 
 mapped = res[res[C.COL_COUNTY].isin(charts.COUNTY_COORDS)]
 coverage = len(mapped) / len(res) * 100 if len(res) else 0

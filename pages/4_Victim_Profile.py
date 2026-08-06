@@ -22,14 +22,11 @@ page_header("👥", "Victim Profile Analysis",
             "Who the victims are and which crimes carry the heaviest human toll")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
+filter_chips(active_filters(df))
 
 victims = int(res[C.COL_VICTIMS].sum())
 gender = res[C.COL_VICTIM_GENDER].value_counts()

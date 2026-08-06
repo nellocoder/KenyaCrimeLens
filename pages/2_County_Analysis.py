@@ -23,14 +23,11 @@ page_header("📍", "County Analysis",
             "Where incidents are concentrated and how offence patterns differ by county")
 
 res = get_filtered(df)
-if res is None:
-    info_banner()
-    st.stop()
 if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
+filter_chips(active_filters(df))
 
 known = res[res[C.COL_COUNTY] != C.UNKNOWN]
 top = known[C.COL_COUNTY].value_counts().head(1)
