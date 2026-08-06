@@ -171,17 +171,17 @@ div[data-testid="stDataFrame"] {{
     max-height: 620px;
 }}
 .cl-table {{
-    border-collapse: collapse; width: 100%; font-size: 0.9rem;
+    border-collapse: collapse; width: 100%; font-size: 0.78rem;
     color: {C.INK}; background: #ffffff;
 }}
 .cl-table thead th {{
     position: sticky; top: 0; z-index: 2;
     background: #f1f5f9; color: #475569; text-align: left;
-    font-weight: 700; font-size: 0.82rem; letter-spacing: 0.01em;
-    padding: 14px 16px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;
+    font-weight: 700; font-size: 0.72rem; letter-spacing: 0.01em;
+    padding: 10px 14px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;
 }}
 .cl-table tbody td {{
-    padding: 12px 16px; border-bottom: 1px solid #eef2f6; vertical-align: middle;
+    padding: 8px 14px; border-bottom: 1px solid #eef2f6; vertical-align: middle;
 }}
 .cl-table tbody tr:nth-child(even) {{ background: #fafcff; }}
 .cl-table tbody tr:hover {{ background: #f0f9ff; }}
@@ -190,8 +190,8 @@ div[data-testid="stDataFrame"] {{
 .cl-td-muted {{ color: #94a3b8; }}
 .cl-td-num {{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }}
 .cl-pill {{
-    display: inline-block; padding: 4px 12px; border-radius: 999px;
-    color: #ffffff; font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    color: #ffffff; font-size: 0.7rem; font-weight: 600; white-space: nowrap;
     line-height: 1.3;
 }}
 
