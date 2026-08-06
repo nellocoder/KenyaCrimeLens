@@ -10,7 +10,7 @@ from utils import config as C
 from utils.filters import active_filters, get_filtered, render_sidebar
 from utils.loader import load_data
 from utils.theme import (apply_theme, chart_card, filter_chips, info_banner,
-                         kpi_cards, page_header)
+                         kpi_cards, page_header, styled_table)
 
 apply_theme()
 df = load_data()
