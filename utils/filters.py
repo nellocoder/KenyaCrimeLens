@@ -1,69 +1,42 @@
-"""Sidebar query panel for Kenya CrimeLens.
-
-Workflow preserved from the original app: set filters, click Analyze,
-results update on every page. New in this version: a live match-count
-preview under the filters, and applied filters exposed for chip display.
-
-Call ``render_sidebar(df)`` at the top of every page, then ``get_filtered(df)``.
 """
-
-from __future__ import annotations
+Sidebar query panel for Kenya CrimeLens.
+Replicates the CrimeLens workflow: set filters -> click Analyze -> results update.
+Call render_sidebar(df) at the top of every page; then call get_filtered(df).
+"""
 
 import pandas as pd
 import streamlit as st
 
-from utils import config as C
-
-_FILTER_KEYS = ("years", "county", "category", "gender", "weapon", "motive")
+ALL = "All"
 
 
-def _options(df: pd.DataFrame, col: str) -> list[str]:
-    return [C.ALL] + sorted(df[col].dropna().unique())
-
-
-def _preview_count(df: pd.DataFrame, f: dict) -> int:
-    """Cheap row count for the pending (not yet applied) selection."""
-    return len(_apply(df, f))
-
-
-def _apply(df: pd.DataFrame, f: dict) -> pd.DataFrame:
-    res = df[df[C.COL_YEAR].isin(f["years"])] if f["years"] else df.iloc[0:0]
-    pairs = [
-        ("county", C.COL_COUNTY), ("category", C.COL_CATEGORY),
-        ("gender", C.COL_VICTIM_GENDER), ("weapon", C.COL_WEAPON),
-        ("motive", C.COL_MOTIVE),
-    ]
-    for key, col in pairs:
-        if f[key] != C.ALL:
-            res = res[res[col] == f[key]]
-    return res
-
-
-def render_sidebar(df: pd.DataFrame) -> None:
-    """Render the branded sidebar: logo, navigation, query panel, dataset facts."""
+def render_sidebar(df: pd.DataFrame):
+    """Render the branded sidebar with the query panel. Returns nothing."""
     with st.sidebar:
+        # ---- Brand ----
         st.markdown(
-            f"""
+            """
             <div style="display:flex;align-items:center;gap:12px;padding:2px 2px 6px 2px;">
-                <div style="background:linear-gradient(135deg,{C.ACCENT},{C.ACCENT_LIGHT});
+                <div style="background:linear-gradient(135deg,#0284c7,#0ea5e9);
                             border-radius:11px;width:42px;height:42px;display:flex;
                             align-items:center;justify-content:center;font-size:20px;
-                            box-shadow:0 3px 8px rgba(2,132,199,0.4);">🔍</div>
+                            box-shadow:0 3px 8px rgba(2,132,199,0.4);">
+                    🔍
+                </div>
                 <div>
-                    <div style="font-size:1.2rem;font-weight:800;color:#ffffff;line-height:1.1;">
-                        {C.APP_NAME}
+                    <div style="font-size:1.2rem;font-weight:800;color:#f1f5f9;line-height:1.1;">
+                        Kenya CrimeLens
                     </div>
-                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.75);margin-top:2px;">
-                        {C.APP_TAGLINE}
+                    <div style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">
+                        Media-mined crime data analysis · 2025–2026
                     </div>
                 </div>
             </div>
-            <div style="height:3px;width:100%;border-radius:2px;margin:6px 0 2px 0;
-                        background:{C.FLAG_STRIPE};"></div>
             """,
             unsafe_allow_html=True,
         )
 
+        # ---- Branded navigation (native menu is hidden in theme CSS) ----
         st.markdown('<div class="cl-side-label">Menu</div>', unsafe_allow_html=True)
         st.page_link("Home.py", label="Home", icon="🏠")
         st.page_link("pages/1_Dashboard.py", label="Dashboard", icon="📊")
@@ -75,21 +48,19 @@ def render_sidebar(df: pd.DataFrame) -> None:
         st.page_link("pages/7_Data_Explorer.py", label="Data Explorer", icon="🗃️")
 
         st.divider()
+
+        # ---- Query panel ----
         st.markdown('<div class="cl-side-label">Query</div>', unsafe_allow_html=True)
 
-        years_all = sorted(df[C.COL_YEAR].unique())
-        pending = {
-            "years": st.multiselect("Year", years_all, default=years_all, key="f_years"),
-            "county": st.selectbox("County", _options(df, C.COL_COUNTY), key="f_county"),
-            "category": st.selectbox("Offence Category", _options(df, C.COL_CATEGORY),
-                                     key="f_category"),
-            "gender": st.selectbox("Victim Gender", _options(df, C.COL_VICTIM_GENDER),
-                                   key="f_gender"),
-            "weapon": st.selectbox("Weapon", _options(df, C.COL_WEAPON), key="f_weapon"),
-            "motive": st.selectbox("Motive", _options(df, C.COL_MOTIVE), key="f_motive"),
-        }
-
-        st.caption(f"Matches for this selection: **{_preview_count(df, pending):,}** incidents")
+        years_all = sorted(df["Year"].unique())
+        years = st.multiselect("Year", years_all, default=years_all, key="f_years")
+        county = st.selectbox("County", [ALL] + sorted(df["County"].unique()), key="f_county")
+        category = st.selectbox("Offence Category",
+                                [ALL] + sorted(df["Offence Category"].unique()), key="f_category")
+        gender = st.selectbox("Victim Gender",
+                              [ALL] + sorted(df["Victim Gender"].unique()), key="f_gender")
+        weapon = st.selectbox("Weapon", [ALL] + sorted(df["Weapon"].unique()), key="f_weapon")
+        motive = st.selectbox("Motive", [ALL] + sorted(df["Motive"].unique()), key="f_motive")
 
         c1, c2 = st.columns(2)
         analyze = c1.button("🔍 Analyze", type="primary", use_container_width=True)
@@ -99,30 +70,47 @@ def render_sidebar(df: pd.DataFrame) -> None:
         st.markdown('<div class="cl-side-label">Dataset</div>', unsafe_allow_html=True)
         st.caption(
             f"{len(df):,} incidents mined from Kenyan print media  \n"
-            f"{df[C.COL_DATE].min():%Y-%m-%d} to {df[C.COL_DATE].max():%Y-%m-%d}  \n"
+            f"{df['Date'].min():%Y-%m-%d} to {df['Date'].max():%Y-%m-%d}  \n"
             "Sources: Daily Nation, The Standard, The Star, People Daily and others"
         )
-        st.caption(f"Note: {C.DATA_DISCLAIMER}")
+        st.caption(
+            "Note: figures reflect media-reported incidents, not official police "
+            "statistics. A missing victim count is treated as 1."
+        )
 
     if reset:
         st.session_state.pop("applied", None)
         st.rerun()
 
     if analyze:
-        if not pending["years"]:
+        if not years:
             st.sidebar.warning("Select at least one year.")
         else:
-            st.session_state["applied"] = pending
+            st.session_state["applied"] = {
+                "years": years, "county": county, "category": category,
+                "gender": gender, "weapon": weapon, "motive": motive,
+            }
 
 
 def get_filtered(df: pd.DataFrame) -> pd.DataFrame | None:
-    """Return the filtered DataFrame for the applied query, or None if not run."""
+    """Return the filtered dataframe for the applied query, or None if not yet run."""
     f = st.session_state.get("applied")
     if f is None:
         return None
-    return _apply(df, f)
+
+    res = df[df["Year"].isin(f["years"])]
+    if f["county"] != ALL:
+        res = res[res["County"] == f["county"]]
+    if f["category"] != ALL:
+        res = res[res["Offence Category"] == f["category"]]
+    if f["gender"] != ALL:
+        res = res[res["Victim Gender"] == f["gender"]]
+    if f["weapon"] != ALL:
+        res = res[res["Weapon"] == f["weapon"]]
+    if f["motive"] != ALL:
+        res = res[res["Motive"] == f["motive"]]
+    return res
 
 
 def active_filters() -> dict | None:
-    """The currently applied filter dict (or None before the first Analyze)."""
     return st.session_state.get("applied")
