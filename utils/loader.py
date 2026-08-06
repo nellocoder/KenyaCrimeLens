@@ -1,36 +1,69 @@
-"""Data loading and caching for Kenya CrimeLens."""
+"""Data loading, validation and caching for Kenya CrimeLens."""
 
+from __future__ import annotations
+
+import json
 import os
+
 import pandas as pd
 import streamlit as st
 
-DATA_PATH = os.path.join("data", "cleaned_crime_data.csv")
+from utils import config as C
+
+REQUIRED_COLS = [C.COL_DATE, C.COL_COUNTY, C.COL_CATEGORY, C.COL_OFFENCE, C.COL_VICTIMS]
+
 
 @st.cache_data(show_spinner="Loading dataset...")
 def load_data() -> pd.DataFrame:
-    """Load the cleaned, categorized media-mining dataset (cached)."""
-    if not os.path.exists(DATA_PATH):
+    """Load and prepare the cleaned media-mining dataset.
+
+    Returns an empty DataFrame (with an on-screen error) when the file is
+    missing or malformed, so every page can simply ``st.stop()``.
+    """
+    if not os.path.exists(C.DATA_PATH):
         st.error(
-            f"Dataset not found at `{DATA_PATH}`. Run `python data_cleaning.py` "
-            "first, or place cleaned_crime_data.csv in the data/ folder."
+            f"Dataset not found at `{C.DATA_PATH}`. Run `python data_cleaning.py` "
+            "first, or place `cleaned_crime_data.csv` in the `data/` folder."
         )
         return pd.DataFrame()
 
-    df = pd.read_csv(DATA_PATH, parse_dates=["Date"])
-    df["Year"] = df["Date"].dt.year
-    df["Month"] = df["Date"].dt.to_period("M").astype(str)
+    try:
+        df = pd.read_csv(C.DATA_PATH, parse_dates=[C.COL_DATE])
+    except (ValueError, pd.errors.ParserError) as exc:
+        st.error(f"Could not parse the dataset: {exc}")
+        return pd.DataFrame()
 
-    for col in ["County", "Offence Category", "Offence", "Victim Gender",
-                "Perpetrator Gender", "Weapon", "Motive", "Source"]:
+    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    if missing:
+        st.error(f"Dataset is missing required columns: {', '.join(missing)}")
+        return pd.DataFrame()
+
+    df = df.dropna(subset=[C.COL_DATE])
+    df[C.COL_YEAR] = df[C.COL_DATE].dt.year
+    df[C.COL_MONTH] = df[C.COL_DATE].dt.to_period("M").astype(str)
+
+    for col in C.CATEGORICAL_COLS:
         if col in df.columns:
-            df[col] = df[col].fillna("Unknown")
+            df[col] = df[col].fillna(C.UNKNOWN).astype(str).str.strip()
 
-    # Victim / Perpetrator tallies: keep NaN, do NOT fill with 1
-    df["Victim Tally"] = pd.to_numeric(df["Victim Tally"], errors="coerce")
-    df["Perpetrator Tally"] = pd.to_numeric(df["Perpetrator Tally"], errors="coerce")
+    df[C.COL_VICTIMS] = (
+        pd.to_numeric(df[C.COL_VICTIMS], errors="coerce").fillna(1).astype(int)
+    )
+    if C.COL_PERPS in df.columns:
+        df[C.COL_PERPS] = pd.to_numeric(df[C.COL_PERPS], errors="coerce")
+    else:
+        df[C.COL_PERPS] = pd.NA
 
-    # Flags for known counts
-    df["Victim Known"] = df["Victim Tally"].notna()
-    df["Perpetrator Known"] = df["Perpetrator Tally"].notna()
+    return df.sort_values(C.COL_DATE).reset_index(drop=True)
 
-    return df.sort_values("Date")
+
+@st.cache_data(show_spinner=False)
+def load_geojson() -> dict | None:
+    """Load the Kenya county boundaries GeoJSON (or None if unavailable)."""
+    if not os.path.exists(C.GEOJSON_PATH):
+        return None
+    try:
+        with open(C.GEOJSON_PATH, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
