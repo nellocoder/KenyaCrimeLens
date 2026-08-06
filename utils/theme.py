@@ -188,6 +188,9 @@ div[data-testid="stDataFrame"] {{
 .cl-table tbody tr:last-child td {{ border-bottom: none; }}
 .cl-td-strong {{ font-weight: 600; color: {C.INK}; }}
 .cl-td-muted {{ color: #94a3b8; }}
+.cl-td-clip {{ max-width: 340px; white-space: nowrap; overflow: hidden;
+              text-overflow: ellipsis; }}
+.cl-td-clip span {{ cursor: help; }}
 .cl-td-num {{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }}
 .cl-pill {{
     display: inline-block; padding: 3px 10px; border-radius: 999px;
@@ -354,6 +357,7 @@ def styled_table(
     numeric_columns: tuple[str, ...] = (),
     strong_columns: tuple[str, ...] = (),
     date_columns: tuple[str, ...] = (),
+    truncate_columns: dict[str, int] | None = None,
     max_rows: int | None = None,
 ) -> None:
     """Render a DataFrame as a styled HTML table matching the app design.
@@ -363,12 +367,25 @@ def styled_table(
     ``{value: hex_colour}`` dict), muted grey text, right-aligned numbers,
     bold emphasis, or formatted dates.
 
+    ``truncate_columns`` maps a column name to a character limit; long text is
+    shortened to a snippet ending in an ellipsis, with the full text available
+    on hover. Useful for long free-text fields like case summaries.
+
     Everything is HTML-escaped. Pass ``max_rows`` to cap very long tables.
     """
     import pandas as pd
 
     view = df.head(max_rows) if max_rows else df
     pill_columns = pill_columns or {}
+    truncate_columns = truncate_columns or {}
+
+    def _snippet(text: str, limit: int) -> str:
+        text = " ".join(text.split())  # collapse whitespace/newlines
+        if len(text) <= limit:
+            return html.escape(text)
+        cut = text[:limit].rsplit(" ", 1)[0].rstrip(",.;: ")
+        full = html.escape(text)
+        return f'<span title="{full}">{html.escape(cut)}…</span>'
 
     header = "".join(f"<th>{html.escape(str(c))}</th>" for c in view.columns)
     rows_html: list[str] = []
@@ -395,6 +412,13 @@ def styled_table(
                 else:
                     num = int(val) if float(val).is_integer() else round(float(val), 2)
                     cells.append(f'<td class="cl-td-num">{num:,}</td>')
+            elif col in truncate_columns:
+                if pd.isna(val) or str(val).strip() == "":
+                    cells.append('<td class="cl-td-muted">—</td>')
+                else:
+                    snippet = _snippet(str(val), truncate_columns[col])
+                    muted = " cl-td-muted" if col in muted_columns else ""
+                    cells.append(f'<td class="cl-td-clip{muted}">{snippet}</td>')
             elif col in muted_columns:
                 txt = "—" if pd.isna(val) else html.escape(str(val))
                 cells.append(f'<td class="cl-td-muted">{txt}</td>')
