@@ -2,21 +2,16 @@
 
 import streamlit as st
 
-st.set_page_config(page_title="County Analysis · Kenya CrimeLens", page_icon="📍",
-                   layout="wide")
+st.set_page_config(page_title="County Analysis · Kenya CrimeLens", page_icon="📍", layout="wide")
 
-from utils import charts
-from utils import config as C
-from utils.analytics import county_scoreboard
-from utils.filters import active_filters, get_filtered, render_sidebar
 from utils.loader import load_data
-from utils.theme import (apply_theme, chart_card, filter_chips, info_banner,
-                         kpi_cards, page_header)
+from utils.theme import apply_theme, page_header, kpi_cards, chart_card, info_banner
+from utils.filters import render_sidebar, get_filtered
+from utils.analytics import top_n
+from utils import charts
 
 apply_theme()
 df = load_data()
-if df.empty:
-    st.stop()
 render_sidebar(df)
 
 page_header("📍", "County Analysis",
@@ -30,63 +25,37 @@ if res.empty:
     st.warning("No incidents match the selected filters.")
     st.stop()
 
-filter_chips(active_filters())
-
-known = res[res[C.COL_COUNTY] != C.UNKNOWN]
-top = known[C.COL_COUNTY].value_counts().head(1)
+known = res[res["County"] != "Unknown"]
+top = known["County"].value_counts().head(1)
 kpi_cards([
-    {"icon": "🗺️", "label": "Counties affected", "value": f"{known[C.COL_COUNTY].nunique()}",
+    {"icon": "🗺️", "label": "Counties affected", "value": f"{known['County'].nunique()}",
      "sub": f"{len(res) - len(known)} records with unknown county"},
-    {"icon": "📍", "label": "Leading county",
-     "value": top.index[0] if len(top) else "—",
+    {"icon": "📍", "label": "Leading county", "value": top.index[0] if len(top) else "—",
      "sub": f"{top.iloc[0]} incidents" if len(top) else ""},
     {"icon": "👥", "label": "Victims in leading county",
-     "value": (f"{int(known[known[C.COL_COUNTY] == top.index[0]][C.COL_VICTIMS].sum()):,}"
-               if len(top) else "—"),
+     "value": f"{int(known[known['County'] == top.index[0]]['Victim Tally'].sum()):,}" if len(top) else "—",
      "sub": "media-reported"},
     {"icon": "📂", "label": "Leading category there",
-     "value": (known[known[C.COL_COUNTY] == top.index[0]][C.COL_CATEGORY]
-               .value_counts().index[0] if len(top) else "—"),
+     "value": (known[known["County"] == top.index[0]]["Offence Category"].value_counts().index[0]
+               if len(top) else "—"),
      "sub": "most frequent offence group"},
 ])
 
 c1, c2 = st.columns(2)
 with c1:
-    chart_card("Top 15 counties by incidents", charts.top_counties_bar(res, n=15),
-               height=430)
+    chart_card("Top 15 counties by incidents", charts.top_counties_bar(res, n=15), height=430)
 with c2:
     chart_card("Top 10 counties by offence category",
                charts.stacked_county_category(res, n_counties=10), height=430)
 
-chart_card("Top 10 counties · offence category mix (100% stacked)",
+chart_card("Top 10 counties – offence category mix",
            charts.county_category_composition(res, n_counties=10, use_percent=True),
-           height=520,
-           caption="Each bar is normalised to 100% so county profiles can be compared directly")
-
-chart_card("County vs offence category breakdown",
-           charts.treemap(known, [C.COL_COUNTY, C.COL_CATEGORY]), height=520)
-
-c3, c4 = st.columns(2)
-with c3:
-    chart_card("Avg victims per incident · by county",
-               charts.avg_victims_per_incident(res, group_col=C.COL_COUNTY, top_n=10),
-               height=400,
-               caption=f"Counties with at least {C.MIN_INCIDENTS_FOR_RATIO} incidents")
-with c4:
-    chart_card("Avg victims per incident · by offence category",
-               charts.avg_victims_per_incident(res, group_col=C.COL_CATEGORY, top_n=10),
-               height=400,
-               caption=f"Categories with at least {C.MIN_INCIDENTS_FOR_RATIO} incidents")
+           height=520)
 
 st.subheader("County scoreboard")
-tbl = county_scoreboard(res)
-st.dataframe(
-    tbl, use_container_width=True, hide_index=True,
-    column_config={
-        "% of incidents": st.column_config.NumberColumn(format="%.1f%%"),
-        "% of victims": st.column_config.NumberColumn(format="%.1f%%"),
-        "Incidents": st.column_config.ProgressColumn(
-            format="%d", min_value=0,
-            max_value=int(tbl["Incidents"].max()) if len(tbl) else 1),
-    },
-)
+tbl = (known.groupby("County")
+       .agg(Incidents=("County", "size"), Victims=("Victim Tally", "sum"),
+            Perpetrators=("Perpetrator Tally", "sum"),
+            **{"Top Category": ("Offence Category", lambda s: s.value_counts().index[0])})
+       .sort_values("Incidents", ascending=False).reset_index())
+st.dataframe(tbl, use_container_width=True, hide_index=True)
