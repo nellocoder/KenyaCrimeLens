@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 from datetime import datetime
 from io import BytesIO
@@ -40,17 +41,24 @@ def to_excel_bytes(df: pd.DataFrame, sheet_name: str = "Incidents") -> bytes:
         })
         for col_idx, name in enumerate(df.columns):
             sheet.write(0, col_idx, name, header_fmt)
-            sample = df[name].astype(str).str.len()
-            width = min(max(int(sample.quantile(0.9)) if len(sample) else 10,
-                            len(name)) + 2, 60)
+            lengths = df[name].astype(str).str.len()
+            body_width = int(lengths.quantile(0.9)) if lengths.notna().any() else 0
+            width = min(max(body_width, len(str(name))) + 2, 60)
             sheet.set_column(col_idx, col_idx, width)
         sheet.freeze_panes(1, 0)
         sheet.autofilter(0, 0, len(df), len(df.columns) - 1)
     return buf.getvalue()
 
 
-def _strip_tags(text_html: str) -> str:
-    return re.sub(r"<[^>]+>", "", text_html)
+def _pdf_text(text_html: str) -> str:
+    """Strip HTML tags, decode entities, then escape for reportlab markup.
+
+    The narrative is built as browser HTML (``&amp;`` etc.); reportlab needs
+    the plain text with only ``&``, ``<`` and ``>`` re-escaped for its own
+    mini-markup, otherwise entities render literally in the PDF.
+    """
+    plain = html.unescape(re.sub(r"<[^>]+>", "", text_html))
+    return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def to_pdf_bytes(title: str, summary_html: str, kpi_cards: list[dict],
@@ -101,7 +109,7 @@ def to_pdf_bytes(title: str, summary_html: str, kpi_cards: list[dict],
     ]))
     story += [kpi_tbl, Spacer(1, 10),
               Paragraph("<b>Analysis summary</b>", body),
-              Paragraph(_strip_tags(summary_html), body), Spacer(1, 10)]
+              Paragraph(_pdf_text(summary_html), body), Spacer(1, 10)]
 
     if scoreboard is not None and not scoreboard.empty:
         top = scoreboard.head(15)

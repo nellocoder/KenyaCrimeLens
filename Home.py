@@ -1,6 +1,6 @@
-"""
-Kenya CrimeLens - landing page (national overview).
-Run:  streamlit run app.py
+"""Kenya CrimeLens - landing page (national overview).
+
+Run:  streamlit run Home.py
 """
 
 import streamlit as st
@@ -12,10 +12,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from utils.loader import load_data
-from utils.theme import apply_theme, page_header, kpi_cards, chart_card
-from utils.filters import render_sidebar
 from utils import charts
+from utils import config as C
+from utils.filters import render_sidebar
+from utils.loader import load_data
+from utils.theme import apply_theme, chart_card, kpi_cards, page_header
 
 apply_theme()
 df = load_data()
@@ -33,7 +34,7 @@ page_header(
 st.info(
     "👈 Use the **sidebar query panel** to filter by year, county, offence "
     "category, victim gender, weapon or motive, then click **Analyze**. "
-    "Navigate between analytical modules using the page menu above the filters. "
+    "Navigate between analytical modules using the menu. "
     "The overview below covers the full dataset.",
     icon="💡",
 )
@@ -41,14 +42,14 @@ st.info(
 # ---------------------------------------------------------------------------
 # National overview (always unfiltered)
 # ---------------------------------------------------------------------------
-victims = int(df["Victim Tally"].sum())
-perps = int(df["Perpetrator Tally"].sum())
-top_county = df[df["County"] != "Unknown"]["County"].value_counts().head(1)
-top_cat = df["Offence Category"].value_counts().head(1)
+victims = int(df[C.COL_VICTIMS].sum())
+perps = int(df[C.COL_PERPS].sum(skipna=True) or 0)
+top_county = df[df[C.COL_COUNTY] != C.UNKNOWN][C.COL_COUNTY].value_counts().head(1)
+top_cat = df[C.COL_CATEGORY].value_counts().head(1)
 
 kpi_cards([
     {"icon": "📈", "label": "Incidents", "value": f"{len(df):,}",
-     "sub": f"{df['County'].nunique()} counties affected"},
+     "sub": f"{df[C.COL_COUNTY].nunique()} counties affected"},
     {"icon": "👥", "label": "Victims", "value": f"{victims:,}",
      "sub": f"{perps:,} recorded perpetrators"},
     {"icon": "📍", "label": "Top County", "value": top_county.index[0],
@@ -57,13 +58,20 @@ kpi_cards([
      "sub": f"{top_cat.iloc[0]} incidents"},
 ])
 
-chart_card("Monthly incident trend (full dataset)", charts.monthly_trend(df), height=300)
+chart_card("Monthly incident trend (full dataset)",
+           charts.monthly_trend_with_ma(df), height=320,
+           caption="Dotted line: 3-month moving average")
 
 c1, c2 = st.columns(2)
 with c1:
     chart_card("Incidents by offence category", charts.category_bar(df), height=480)
 with c2:
     chart_card("Top counties by incidents", charts.top_counties_bar(df), height=480)
+
+choropleth = charts.county_choropleth(df)
+if choropleth is not None:
+    chart_card("National incident density by county", choropleth, height=520,
+               caption="Hover a county for incidents, victims, rank and top category")
 
 st.divider()
 st.caption(
