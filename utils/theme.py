@@ -236,25 +236,20 @@ def org_banner(logo_b64: str | None) -> None:
         f'style="height:64px;width:auto;object-fit:contain;"/>'
         if logo_b64 else ""
     )
-    st.markdown(
-        f"""
-        <div style="display:flex;align-items:center;gap:16px;
-                    padding:6px 2px 14px 2px;border-bottom:1px solid #e2e8f0;
-                    margin-bottom:18px;">
-            {logo_html}
-            <div>
-                <div style="font-size:1.05rem;font-weight:800;color:{C.INK};
-                            line-height:1.2;letter-spacing:0.01em;">
-                    {C.APP_OWNER}
-                </div>
-                <div style="font-size:0.82rem;color:{C.MUTED};margin-top:2px;">
-                    {C.APP_NAME} · {C.APP_TAGLINE}
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    banner = (
+        '<div style="display:flex;align-items:center;gap:16px;'
+        'padding:6px 2px 14px 2px;border-bottom:1px solid #e2e8f0;'
+        'margin-bottom:18px;">'
+        f'{logo_html}'
+        '<div>'
+        f'<div style="font-size:1.05rem;font-weight:800;color:{C.INK};'
+        'line-height:1.2;letter-spacing:0.01em;">'
+        f'{html.escape(C.APP_OWNER)}</div>'
+        f'<div style="font-size:0.82rem;color:{C.MUTED};margin-top:2px;">'
+        f'{html.escape(C.APP_NAME)} · {html.escape(C.APP_TAGLINE)}</div>'
+        '</div></div>'
     )
+    st.markdown(banner, unsafe_allow_html=True)
 
 
 def kpi_cards(cards: list[dict]) -> None:
