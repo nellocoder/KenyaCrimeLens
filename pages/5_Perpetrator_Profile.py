@@ -10,7 +10,7 @@ from utils import config as C
 from utils.filters import active_filters, get_filtered, render_sidebar
 from utils.loader import load_data
 from utils.theme import (apply_theme, chart_card, filter_chips, info_banner,
-                         kpi_cards, page_header)
+                         kpi_cards, page_header, styled_table)
 
 apply_theme()
 df = load_data()
@@ -77,10 +77,13 @@ chart_card("Recorded perpetrators by offence category",
 st.subheader("Incidents with the most recorded perpetrators")
 cols = [C.COL_DATE, C.COL_COUNTY, C.COL_CATEGORY, C.COL_OFFENCE, C.COL_PERPS,
         C.COL_PERP_GENDER, C.COL_SUMMARY]
-st.dataframe(recorded.nlargest(20, C.COL_PERPS)[cols],
-             use_container_width=True, hide_index=True,
-             column_config={
-                 C.COL_DATE: st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
-                 C.COL_SUMMARY: st.column_config.TextColumn("Case Summary",
-                                                            width="large"),
-             })
+cat_colors = charts.category_colors(res[C.COL_CATEGORY].unique())
+styled_table(
+    recorded.nlargest(20, C.COL_PERPS)[cols].rename(
+        columns={C.COL_PERPS: "Perpetrators"}),
+    pill_columns={C.COL_CATEGORY: cat_colors},
+    strong_columns=(C.COL_OFFENCE,),
+    numeric_columns=("Perpetrators",),
+    muted_columns=(C.COL_PERP_GENDER, C.COL_SUMMARY),
+    date_columns=(C.COL_DATE,),
+)

@@ -11,7 +11,7 @@ from utils.analytics import county_scoreboard
 from utils.filters import active_filters, get_filtered, render_sidebar
 from utils.loader import load_data
 from utils.theme import (apply_theme, chart_card, filter_chips, info_banner,
-                         kpi_cards, page_header)
+                         kpi_cards, page_header, styled_table)
 
 apply_theme()
 df = load_data()
@@ -58,10 +58,11 @@ with c2:
     chart_card("Top 10 counties by offence category",
                charts.stacked_county_category(res, n_counties=10), height=430)
 
-chart_card("Top 10 counties · offence category mix (100% stacked)",
-           charts.county_category_composition(res, n_counties=10, use_percent=True),
+chart_card("Top 10 counties · offence category mix",
+           charts.county_category_heatmap(res, n_counties=10, n_categories=8),
            height=520,
-           caption="Each bar is normalised to 100% so county profiles can be compared directly")
+           caption="Each cell shows a category's share of that county's incidents — "
+                   "darker means a larger share")
 
 chart_card("County vs offence category breakdown",
            charts.treemap(known, [C.COL_COUNTY, C.COL_CATEGORY]), height=520)
@@ -80,13 +81,11 @@ with c4:
 
 st.subheader("County scoreboard")
 tbl = county_scoreboard(res)
-st.dataframe(
-    tbl, use_container_width=True, hide_index=True,
-    column_config={
-        "% of incidents": st.column_config.NumberColumn(format="%.1f%%"),
-        "% of victims": st.column_config.NumberColumn(format="%.1f%%"),
-        "Incidents": st.column_config.ProgressColumn(
-            format="%d", min_value=0,
-            max_value=int(tbl["Incidents"].max()) if len(tbl) else 1),
-    },
+cat_colors = charts.category_colors(res[C.COL_CATEGORY].unique())
+styled_table(
+    tbl,
+    pill_columns={"Top Category": cat_colors},
+    strong_columns=("County",),
+    numeric_columns=("Incidents", "Victims", "Perpetrators", "% of incidents",
+                     "% of victims", "Victims / incident"),
 )

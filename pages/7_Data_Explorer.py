@@ -5,11 +5,13 @@ import streamlit as st
 st.set_page_config(page_title="Data Explorer · Kenya CrimeLens", page_icon="🗃️",
                    layout="wide")
 
+from utils import charts
 from utils import config as C
 from utils import export
 from utils.filters import active_filters, get_filtered, render_sidebar
 from utils.loader import load_data
-from utils.theme import (apply_theme, filter_chips, info_banner, page_header)
+from utils.theme import (apply_theme, filter_chips, info_banner, page_header,
+                         styled_table)
 
 apply_theme()
 df = load_data()
@@ -45,22 +47,40 @@ if search:
 
 st.caption(f"Showing **{len(table):,}** of {len(res):,} records from the current query")
 
-cols = [C.COL_DATE, C.COL_COUNTY, C.COL_CATEGORY, C.COL_OFFENCE, C.COL_VICTIMS,
-        C.COL_VICTIM_GENDER, C.COL_PERPS, C.COL_WEAPON, C.COL_MOTIVE,
-        C.COL_SOURCE, C.COL_SUMMARY]
-
-st.dataframe(
-    table[cols],
-    use_container_width=True,
-    hide_index=True,
-    height=520,
-    column_config={
-        C.COL_DATE: st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
-        C.COL_VICTIMS: st.column_config.NumberColumn("Victims"),
-        C.COL_PERPS: st.column_config.NumberColumn("Perpetrators"),
-        C.COL_SUMMARY: st.column_config.TextColumn("Case Summary", width="large"),
-    },
+# Compact view matching the app's styled table (pills, muted secondary fields).
+# The full column set is preserved in the exports below.
+display_cols = [C.COL_DATE, C.COL_COUNTY, C.COL_CATEGORY, C.COL_OFFENCE,
+                C.COL_VICTIMS, C.COL_WEAPON, C.COL_MOTIVE]
+cat_colors = charts.category_colors(res[C.COL_CATEGORY].unique())
+styled_table(
+    table[display_cols].rename(columns={C.COL_VICTIMS: "Victims"}),
+    pill_columns={C.COL_CATEGORY: cat_colors},
+    strong_columns=(C.COL_OFFENCE,),
+    numeric_columns=("Victims",),
+    muted_columns=(C.COL_WEAPON, C.COL_MOTIVE),
+    date_columns=(C.COL_DATE,),
+    max_rows=250,
 )
+
+# Full record set (all columns) available on demand and in exports.
+export_cols = [C.COL_DATE, C.COL_COUNTY, C.COL_CATEGORY, C.COL_OFFENCE, C.COL_VICTIMS,
+               C.COL_VICTIM_GENDER, C.COL_PERPS, C.COL_WEAPON, C.COL_MOTIVE,
+               C.COL_SOURCE, C.COL_SUMMARY]
+with st.expander("Show all columns (including case summaries) in a sortable grid"):
+    st.dataframe(
+        table[export_cols],
+        use_container_width=True,
+        hide_index=True,
+        height=520,
+        column_config={
+            C.COL_DATE: st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+            C.COL_VICTIMS: st.column_config.NumberColumn("Victims"),
+            C.COL_PERPS: st.column_config.NumberColumn("Perpetrators"),
+            C.COL_SUMMARY: st.column_config.TextColumn("Case Summary", width="large"),
+        },
+    )
+
+cols = export_cols
 
 # ---------------------------------------------------------------------------
 # Export

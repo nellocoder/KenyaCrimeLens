@@ -11,7 +11,7 @@ from utils.analytics import top_n
 from utils.filters import active_filters, get_filtered, render_sidebar
 from utils.loader import load_data
 from utils.theme import (apply_theme, chart_card, filter_chips, info_banner,
-                         kpi_cards, page_header)
+                         kpi_cards, page_header, styled_table)
 
 apply_theme()
 df = load_data()
@@ -89,4 +89,10 @@ detail = (res.groupby(C.COL_CATEGORY)
                                   lambda s: s.value_counts().index[0])})
           .sort_values("Incidents", ascending=False).reset_index())
 detail["Victims / incident"] = detail["Victims / incident"].round(2)
-st.dataframe(detail, use_container_width=True, hide_index=True)
+cat_colors = charts.category_colors(res[C.COL_CATEGORY].unique())
+styled_table(
+    detail,
+    pill_columns={C.COL_CATEGORY: cat_colors},
+    strong_columns=("Top offence",),
+    numeric_columns=("Incidents", "Victims", "Victims / incident"),
+)

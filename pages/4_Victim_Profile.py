@@ -68,10 +68,12 @@ chart_card("Monthly victim toll", charts.monthly_trend(res, value="victims"),
 st.subheader("Incidents with the highest victim counts")
 cols = [C.COL_DATE, C.COL_COUNTY, C.COL_CATEGORY, C.COL_OFFENCE, C.COL_VICTIMS,
         C.COL_MOTIVE, C.COL_SUMMARY]
-st.dataframe(res.nlargest(20, C.COL_VICTIMS)[cols],
-             use_container_width=True, hide_index=True,
-             column_config={
-                 C.COL_DATE: st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
-                 C.COL_SUMMARY: st.column_config.TextColumn("Case Summary",
-                                                            width="large"),
-             })
+cat_colors = charts.category_colors(res[C.COL_CATEGORY].unique())
+styled_table(
+    res.nlargest(20, C.COL_VICTIMS)[cols].rename(columns={C.COL_VICTIMS: "Victims"}),
+    pill_columns={C.COL_CATEGORY: cat_colors},
+    strong_columns=(C.COL_OFFENCE,),
+    numeric_columns=("Victims",),
+    muted_columns=(C.COL_MOTIVE, C.COL_SUMMARY),
+    date_columns=(C.COL_DATE,),
+)
