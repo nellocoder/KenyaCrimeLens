@@ -25,7 +25,7 @@ html, body, [class*="css"] {{
     font-family: 'Inter', 'Segoe UI', sans-serif;
 }}
 .stApp {{ background-color: {C.PAGE_BG}; }}
-.block-container {{ padding-top: 1.6rem; padding-bottom: 2rem; max-width: 1440px; }}
+.block-container {{ padding-top: 3rem; padding-bottom: 2rem; max-width: 1440px; }}
 
 h1, h2, h3, .cl-header h1 {{ font-family: 'Archivo', 'Inter', sans-serif; }}
 
@@ -90,14 +90,16 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {{
 }}
 
 /* ---------- Page header with flag stripe ---------- */
-.cl-header {{ display: flex; align-items: center; gap: 14px; margin-bottom: 2px; }}
+.cl-header {{ display: flex; align-items: center; gap: 14px; margin-bottom: 2px;
+             padding-top: 6px; }}
 .cl-header-icon {{
     background: linear-gradient(135deg, {C.ACCENT}, {C.ACCENT_LIGHT});
-    border-radius: 12px; width: 46px; height: 46px;
+    border-radius: 12px; width: 46px; height: 46px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; box-shadow: 0 4px 10px rgba(2,132,199,0.30);
 }}
-.cl-header h1 {{ margin: 0; padding: 0; font-size: 1.85rem; font-weight: 800; color: {C.INK}; }}
+.cl-header h1 {{ margin: 0; padding: 0; font-size: 1.85rem; font-weight: 800;
+                line-height: 1.25; color: {C.INK}; }}
 .cl-stripe {{
     height: 4px; width: 120px; border-radius: 2px;
     background: {C.FLAG_STRIPE};
