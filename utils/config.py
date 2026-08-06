@@ -14,6 +14,7 @@ import os
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(ROOT_DIR, "data", "cleaned_crime_data.csv")
 GEOJSON_PATH = os.path.join(ROOT_DIR, "assets", "kenya_counties.geojson")
+LOGO_PATH = os.path.join(ROOT_DIR, "assets", "logo_ncrc.png")
 
 # ---------------------------------------------------------------------------
 # Brand tokens (Kenyan flag derived)
@@ -67,6 +68,7 @@ NON_MAPPABLE = {UNKNOWN, "Multiple Counties", "Nationwide", "Outside Kenya"}
 MIN_INCIDENTS_FOR_RATIO = 5
 
 APP_NAME = "Kenya CrimeLens"
+APP_OWNER = "National Crime Research Centre"
 APP_TAGLINE = "Media-mined crime intelligence · 2025–2026"
 DATA_DISCLAIMER = (
     "Figures reflect media-reported incidents, not official police statistics. "

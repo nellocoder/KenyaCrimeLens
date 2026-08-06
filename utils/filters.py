@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 
 from utils import config as C
+from utils.loader import load_logo_b64
 
 _FILTER_KEYS = ("years", "county", "category", "gender", "weapon", "motive")
 
@@ -42,19 +43,32 @@ def _apply(df: pd.DataFrame, f: dict) -> pd.DataFrame:
 def render_sidebar(df: pd.DataFrame) -> None:
     """Render the branded sidebar: logo, navigation, query panel, dataset facts."""
     with st.sidebar:
+        logo = load_logo_b64()
+        if logo:
+            brand_mark = (
+                f'<div style="background:#ffffff;border-radius:12px;width:46px;'
+                f'height:46px;display:flex;align-items:center;justify-content:center;'
+                f'box-shadow:0 3px 8px rgba(0,0,0,0.25);padding:4px;">'
+                f'<img src="{logo}" alt="NCRC logo" '
+                f'style="max-width:100%;max-height:100%;object-fit:contain;"/></div>'
+            )
+        else:
+            brand_mark = (
+                f'<div style="background:linear-gradient(135deg,{C.ACCENT},'
+                f'{C.ACCENT_LIGHT});border-radius:11px;width:46px;height:46px;'
+                f'display:flex;align-items:center;justify-content:center;'
+                f'font-size:20px;box-shadow:0 3px 8px rgba(2,132,199,0.4);">🔍</div>'
+            )
         st.markdown(
             f"""
             <div style="display:flex;align-items:center;gap:12px;padding:2px 2px 6px 2px;">
-                <div style="background:linear-gradient(135deg,{C.ACCENT},{C.ACCENT_LIGHT});
-                            border-radius:11px;width:42px;height:42px;display:flex;
-                            align-items:center;justify-content:center;font-size:20px;
-                            box-shadow:0 3px 8px rgba(2,132,199,0.4);">🔍</div>
+                {brand_mark}
                 <div>
                     <div style="font-size:1.2rem;font-weight:800;color:#ffffff;line-height:1.1;">
                         {C.APP_NAME}
                     </div>
                     <div style="font-size:0.72rem;color:rgba(255,255,255,0.75);margin-top:2px;">
-                        {C.APP_TAGLINE}
+                        {C.APP_OWNER}
                     </div>
                 </div>
             </div>
@@ -115,14 +129,34 @@ def render_sidebar(df: pd.DataFrame) -> None:
             st.session_state["applied"] = pending
 
 
-def get_filtered(df: pd.DataFrame) -> pd.DataFrame | None:
-    """Return the filtered DataFrame for the applied query, or None if not run."""
-    f = st.session_state.get("applied")
-    if f is None:
-        return None
+def default_query(df: pd.DataFrame) -> dict:
+    """The unfiltered national view used before the user clicks Analyze."""
+    return {
+        "years": sorted(df[C.COL_YEAR].unique()),
+        "county": C.ALL, "category": C.ALL, "gender": C.ALL,
+        "weapon": C.ALL, "motive": C.ALL,
+    }
+
+
+def get_filtered(df: pd.DataFrame) -> pd.DataFrame:
+    """Return the filtered DataFrame for the applied query.
+
+    Before the user clicks Analyze, this falls back to the full national view
+    so every page loads immediately with data. Once Analyze is clicked, the
+    user's selection is applied instead.
+    """
+    f = st.session_state.get("applied") or default_query(df)
     return _apply(df, f)
 
 
-def active_filters() -> dict | None:
-    """The currently applied filter dict (or None before the first Analyze)."""
-    return st.session_state.get("applied")
+def active_filters(df: pd.DataFrame | None = None) -> dict | None:
+    """The applied filter dict, or the default national query before Analyze.
+
+    Passing ``df`` returns the default query (for chip display) when nothing
+    has been applied yet; omitting it preserves the old None-before-Analyze
+    behaviour for callers that want to distinguish the two states.
+    """
+    applied = st.session_state.get("applied")
+    if applied is not None:
+        return applied
+    return default_query(df) if df is not None else None

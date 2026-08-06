@@ -229,6 +229,34 @@ def page_header(icon: str, title: str, subtitle: str = "") -> None:
     )
 
 
+def org_banner(logo_b64: str | None) -> None:
+    """Top-of-page identity strip: NCRC logo, owner name and product tagline."""
+    logo_html = (
+        f'<img src="{logo_b64}" alt="NCRC logo" '
+        f'style="height:64px;width:auto;object-fit:contain;"/>'
+        if logo_b64 else ""
+    )
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:16px;
+                    padding:6px 2px 14px 2px;border-bottom:1px solid #e2e8f0;
+                    margin-bottom:18px;">
+            {logo_html}
+            <div>
+                <div style="font-size:1.05rem;font-weight:800;color:{C.INK};
+                            line-height:1.2;letter-spacing:0.01em;">
+                    {C.APP_OWNER}
+                </div>
+                <div style="font-size:0.82rem;color:{C.MUTED};margin-top:2px;">
+                    {C.APP_NAME} · {C.APP_TAGLINE}
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def kpi_cards(cards: list[dict]) -> None:
     """Render a responsive row of KPI cards.
 

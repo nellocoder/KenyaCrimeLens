@@ -67,3 +67,18 @@ def load_geojson() -> dict | None:
             return json.load(fh)
     except (OSError, json.JSONDecodeError):
         return None
+
+
+@st.cache_data(show_spinner=False)
+def load_logo_b64() -> str | None:
+    """Return the NCRC logo as a base64 data URI, or None if unavailable."""
+    import base64
+
+    if not os.path.exists(C.LOGO_PATH):
+        return None
+    try:
+        with open(C.LOGO_PATH, "rb") as fh:
+            encoded = base64.b64encode(fh.read()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except OSError:
+        return None
