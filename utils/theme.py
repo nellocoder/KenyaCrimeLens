@@ -164,6 +164,37 @@ div[data-testid="stDataFrame"] {{
     border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;
 }}
 
+/* ---------- Styled HTML table (pill categories, zebra rows) ---------- */
+.cl-table-wrap {{
+    border: 1px solid #e2e8f0; border-radius: 12px; overflow: auto;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06); margin-bottom: 8px;
+    max-height: 620px;
+}}
+.cl-table {{
+    border-collapse: collapse; width: 100%; font-size: 0.9rem;
+    color: {C.INK}; background: #ffffff;
+}}
+.cl-table thead th {{
+    position: sticky; top: 0; z-index: 2;
+    background: #f1f5f9; color: #475569; text-align: left;
+    font-weight: 700; font-size: 0.82rem; letter-spacing: 0.01em;
+    padding: 14px 16px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;
+}}
+.cl-table tbody td {{
+    padding: 12px 16px; border-bottom: 1px solid #eef2f6; vertical-align: middle;
+}}
+.cl-table tbody tr:nth-child(even) {{ background: #fafcff; }}
+.cl-table tbody tr:hover {{ background: #f0f9ff; }}
+.cl-table tbody tr:last-child td {{ border-bottom: none; }}
+.cl-td-strong {{ font-weight: 600; color: {C.INK}; }}
+.cl-td-muted {{ color: #94a3b8; }}
+.cl-td-num {{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }}
+.cl-pill {{
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    color: #ffffff; font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+    line-height: 1.3;
+}}
+
 @media (max-width: 780px) {{
     .cl-header h1 {{ font-size: 1.4rem; }}
     .cl-subtitle, .cl-stripe {{ margin-left: 0; }}
@@ -243,8 +274,8 @@ def summary_box(text_html: str) -> None:
 def chart_card(title: str, fig, height: int | None = None, caption: str = "") -> None:
     """Wrap a Plotly figure in a white card with a bold title.
 
-    The mode bar is kept (camera icon) so each chart can be downloaded as a
-    PNG straight from the UI.
+    The toolbar (PNG download, zoom, pan) is hidden by default and appears
+    only while the pointer is over the chart, keeping the visuals clean.
     """
     caption_html = f'<div class="chart-caption">{html.escape(caption)}</div>' if caption else ""
     st.markdown(
@@ -257,9 +288,10 @@ def chart_card(title: str, fig, height: int | None = None, caption: str = "") ->
         fig,
         use_container_width=True,
         config={
-            "displayModeBar": True,
+            "displayModeBar": "hover",
             "displaylogo": False,
-            "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d"],
+            "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d",
+                                       "zoomIn2d", "zoomOut2d"],
             "toImageButtonOptions": {"format": "png", "scale": 2},
         },
     )
@@ -291,3 +323,71 @@ def info_banner() -> None:
         "national overview.",
         icon="🔍",
     )
+
+def styled_table(
+    df,
+    pill_columns: dict[str, dict[str, str]] | None = None,
+    muted_columns: tuple[str, ...] = (),
+    numeric_columns: tuple[str, ...] = (),
+    strong_columns: tuple[str, ...] = (),
+    date_columns: tuple[str, ...] = (),
+    max_rows: int | None = None,
+) -> None:
+    """Render a DataFrame as a styled HTML table matching the app design.
+
+    Gray sticky header, zebra rows, hover highlight. Selected columns render
+    as coloured pills (via ``pill_columns`` mapping each such column to a
+    ``{value: hex_colour}`` dict), muted grey text, right-aligned numbers,
+    bold emphasis, or formatted dates.
+
+    Everything is HTML-escaped. Pass ``max_rows`` to cap very long tables.
+    """
+    import pandas as pd
+
+    view = df.head(max_rows) if max_rows else df
+    pill_columns = pill_columns or {}
+
+    header = "".join(f"<th>{html.escape(str(c))}</th>" for c in view.columns)
+    rows_html: list[str] = []
+    for _, row in view.iterrows():
+        cells: list[str] = []
+        for col in view.columns:
+            val = row[col]
+            if col in pill_columns:
+                key = str(val)
+                colour = pill_columns[col].get(key, "#64748b")
+                cells.append(
+                    f'<td><span class="cl-pill" style="background:{colour}">'
+                    f'{html.escape(key)}</span></td>'
+                )
+            elif col in date_columns:
+                try:
+                    txt = pd.to_datetime(val).strftime("%Y-%m-%d")
+                except (ValueError, TypeError):
+                    txt = html.escape(str(val))
+                cells.append(f'<td class="cl-td-muted">{txt}</td>')
+            elif col in numeric_columns:
+                if pd.isna(val):
+                    cells.append('<td class="cl-td-num cl-td-muted">—</td>')
+                else:
+                    num = int(val) if float(val).is_integer() else round(float(val), 2)
+                    cells.append(f'<td class="cl-td-num">{num:,}</td>')
+            elif col in muted_columns:
+                txt = "—" if pd.isna(val) else html.escape(str(val))
+                cells.append(f'<td class="cl-td-muted">{txt}</td>')
+            elif col in strong_columns:
+                cells.append(f'<td class="cl-td-strong">{html.escape(str(val))}</td>')
+            else:
+                cells.append(f"<td>{html.escape(str(val))}</td>")
+        rows_html.append("<tr>" + "".join(cells) + "</tr>")
+
+    table = (
+        '<div class="cl-table-wrap"><table class="cl-table">'
+        f"<thead><tr>{header}</tr></thead>"
+        f"<tbody>{''.join(rows_html)}</tbody>"
+        "</table></div>"
+    )
+    st.markdown(table, unsafe_allow_html=True)
+    if max_rows and len(df) > max_rows:
+        st.caption(f"Showing first {max_rows:,} of {len(df):,} rows. "
+                   "Use the Data Explorer to export the full set.")

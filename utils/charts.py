@@ -8,12 +8,14 @@ unavailable.
 
 from __future__ import annotations
 
+import functools
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 from utils import config as C
-from utils.loader import load_geojson
+from utils.loader import load_data, load_geojson
 
 ACCENT = C.ACCENT
 ACCENT_LIGHT = C.ACCENT_LIGHT
@@ -37,9 +39,35 @@ _BASE_LAYOUT = dict(
 MAP_SCALE = "YlOrRd"
 
 
+@functools.lru_cache(maxsize=1)
+def _canonical_category_colors() -> dict[str, str]:
+    """Fixed colour per category across the entire dataset.
+
+    Colours are assigned once against the full, sorted list of categories so a
+    given category keeps the same colour on every page and in every chart,
+    regardless of which subset the current filter shows.
+    """
+    try:
+        cats = sorted(load_data()[C.COL_CATEGORY].dropna().unique())
+    except Exception:  # noqa: BLE001 - fall back to whatever caller passes
+        cats = []
+    return {c: _PALETTE[i % len(_PALETTE)] for i, c in enumerate(cats)}
+
+
 def category_colors(categories) -> dict[str, str]:
-    """Deterministic colour per offence category (stable across pages)."""
-    return {c: _PALETTE[i % len(_PALETTE)] for i, c in enumerate(sorted(categories))}
+    """Deterministic, globally stable colour per offence category.
+
+    Uses the canonical dataset-wide mapping; any category not seen there
+    (edge case) falls back to a hash-stable slot so it is still consistent.
+    """
+    canonical = _canonical_category_colors()
+    result: dict[str, str] = {}
+    for cat in categories:
+        if cat in canonical:
+            result[cat] = canonical[cat]
+        else:
+            result[cat] = _PALETTE[hash(str(cat)) % len(_PALETTE)]
+    return result
 
 
 def _style(fig: go.Figure, y_grid: bool = True) -> go.Figure:
@@ -219,36 +247,55 @@ def victims_by_category(df: pd.DataFrame) -> go.Figure:
     return _style(fig, y_grid=False)
 
 
-def county_category_composition(df: pd.DataFrame, n_counties: int = 10,
-                                use_percent: bool = True) -> go.Figure:
-    """100% stacked bar of offence categories within the top counties."""
-    top_counties = (df[df[C.COL_COUNTY] != C.UNKNOWN][C.COL_COUNTY]
-                    .value_counts().head(n_counties).index)
-    cross = (df[df[C.COL_COUNTY].isin(top_counties)]
-             .groupby([C.COL_COUNTY, C.COL_CATEGORY]).size().reset_index(name="Count"))
-    if cross.empty:
+def county_category_heatmap(df: pd.DataFrame, n_counties: int = 10,
+                            n_categories: int = 8) -> go.Figure:
+    """Heatmap of offence-category share within each of the top counties.
+
+    Rows are the busiest counties, columns the most common categories, and the
+    cell colour is that category's share of the county's incidents. This reads
+    at a glance which counties are dominated by which crime types, without the
+    visual noise of stacking 19 colour segments in every bar.
+    """
+    known = df[~df[C.COL_COUNTY].isin(C.NON_MAPPABLE)]
+    if known.empty:
         return empty_state("No located counties in the current selection")
 
-    pivot = cross.pivot(index=C.COL_COUNTY, columns=C.COL_CATEGORY,
-                        values="Count").fillna(0)
-    if use_percent:
-        pivot = pivot.div(pivot.sum(axis=1), axis=0) * 100
-    pivot = pivot[sorted(pivot.columns)]
+    top_counties = known[C.COL_COUNTY].value_counts().head(n_counties).index.tolist()
+    top_cats = known[C.COL_CATEGORY].value_counts().head(n_categories).index.tolist()
 
-    fig = px.bar(pivot, x=pivot.columns, y=pivot.index, orientation="h",
-                 color_discrete_map=category_colors(pivot.columns))
-    fig.update_layout(**_BASE_LAYOUT)
-    fig.update_layout(barmode="stack", showlegend=True,
-                      legend=dict(font=dict(size=10), title_text="",
-                                  orientation="h", yanchor="bottom", y=1.02,
-                                  xanchor="right", x=1),
-                      margin=dict(l=8, r=8, t=35, b=8))
-    fig.update_yaxes(categoryorder="total ascending")
-    fig.update_xaxes(title_text="% of incidents" if use_percent else "Incidents")
-    tpl = ("%{y}<br>%{fullData.name}: %{x:.1f}%<extra></extra>" if use_percent
-           else "%{y}<br>%{fullData.name}: %{x:,} incidents<extra></extra>")
-    fig.update_traces(hovertemplate=tpl)
+    sub = known[known[C.COL_COUNTY].isin(top_counties)]
+    counts = (sub.groupby([C.COL_COUNTY, C.COL_CATEGORY]).size()
+              .unstack(fill_value=0).reindex(index=top_counties))
+    totals = counts.sum(axis=1)
+    counts = counts.reindex(columns=top_cats, fill_value=0)
+    share = counts.div(totals, axis=0) * 100
+
+    # Order counties by incidents (busiest at top), categories by prevalence
+    share = share.loc[top_counties[::-1]]
+    z = share.values
+    text = [[f"{val:.0f}%" for val in row] for row in z]
+    custom = counts.loc[top_counties[::-1]].values
+
+    fig = go.Figure(go.Heatmap(
+        z=z, x=top_cats, y=share.index.tolist(),
+        text=text, texttemplate="%{text}", textfont=dict(size=10),
+        customdata=custom,
+        colorscale=[[0, "#f8fafc"], [0.5, ACCENT_LIGHT], [1, "#0c4a6e"]],
+        hovertemplate=("<b>%{y}</b><br>%{x}<br>%{z:.0f}% of the county's "
+                       "incidents · %{customdata:,} cases<extra></extra>"),
+        colorbar=dict(title="% of county", thickness=12, ticksuffix="%"),
+        xgap=2, ygap=2,
+    ))
+    fig.update_layout(**{**_BASE_LAYOUT, "margin": dict(l=8, r=16, t=8, b=80)})
+    fig.update_xaxes(tickangle=-35, side="bottom")
+    fig.update_yaxes(autorange="reversed")
     return fig
+
+
+def county_category_composition(df: pd.DataFrame, n_counties: int = 10,
+                                use_percent: bool = True) -> go.Figure:
+    """Kept for backward compatibility; delegates to the heatmap view."""
+    return county_category_heatmap(df, n_counties=n_counties)
 
 
 def avg_victims_per_incident(df: pd.DataFrame, group_col: str = C.COL_COUNTY,
